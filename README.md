@@ -1,16 +1,24 @@
 # Reaper
 
-Private Discord bot runtime for Mōchirīī gallery submissions.
+Private Reaper command and contract helper for Mōchirīī gallery submissions.
+
+Production gallery submissions now use the Supabase-hosted Discord Interactions webhook in the Mochirii website repo:
+
+```text
+https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-interactions
+```
+
+This repository remains useful for guild command registration, contract tests, and a rollback Gateway runtime reference. Do not deploy the Gateway bot as the primary production runtime unless a later approved plan reintroduces a host/process manager.
 
 ## Current Contract
 
-Reaper owns the Discord slash-command entrypoint for member gallery submissions:
+The public Discord command contract is:
 
 ```text
 /submit image:<file> title:<title> subtitle:<subtitle> share_to_instagram:<true|false>
 ```
 
-`share_to_instagram` is optional and defaults to `false`. Reaper sends `instagramOptIn: true` only when the member explicitly selects true. It does not publish to Instagram. The Mochirii website moderator workflow creates and publishes Instagram queue items after approval.
+`share_to_instagram` is optional and defaults to `false`. The Supabase-hosted interaction sends `instagramOptIn: true` only when the member explicitly selects true. Reaper does not publish to Instagram. The Mochirii website moderator workflow creates and publishes Instagram queue items after approval.
 
 ## Setup
 
@@ -28,7 +36,7 @@ Reaper owns the Discord slash-command entrypoint for member gallery submissions:
    bun run register:guild
    ```
 
-4. Run the bot:
+4. Run the rollback Gateway runtime only when explicitly needed for local contract testing:
 
    ```sh
    bun run dev
@@ -51,10 +59,16 @@ bun test
 bun run build
 ```
 
+## Production Runtime
+
+- Primary runtime: Supabase Edge Function `reaper-discord-interactions`.
+- Discord Developer Portal Interactions Endpoint URL: `https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-interactions`.
+- Register guild commands before endpoint verification checks.
+- Keep Discord, Supabase, and Instagram secrets in Supabase secrets or local ignored files only.
+
 ## Deployment Guardrails
 
-- Register guild commands before runtime deployment checks.
 - Keep submissions restricted to channel `1508077313965817856`.
 - Do not log tokens, ingest secrets, attachment signed URLs, or private payload bodies.
 - If a token or secret is exposed, rotate it before restarting production.
-- No real Instagram post is created by this bot.
+- No real Instagram post is created by this repo or by Discord submission alone.
