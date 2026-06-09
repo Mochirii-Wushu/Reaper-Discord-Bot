@@ -7,6 +7,15 @@ const config: ReaperConfig = {
   discordGuildId: "1078630751077142608",
   welcomeDmEnabled: true,
 };
+const expectedWelcomeDmMessage = `Welcome to Mōchirīī pretty guildies!
+
+For more guild info, flutter over to https://mochirii.com & make sure to sync your Discord account so all the hidden guild doors unlock properly.
+
+To view & interact with the WWM guild channels, you’ll need the Mōchirīī guild role. If you want to submit gallery images to the guild website & enjoy other guild-exclusive features, you’ll also need the Verified role.
+
+Introduce yourself with your in-game guild title so we can add it to your role list & sync it with our guild site ranking system.
+
+Mōchirīī is constantly evolving, if you have any questions, get stuck, or feel a tiny bit lost in the clouds, please DM a Moderator anytime. We’re so excited to have you here!`;
 const quietLogger = {
   log: () => undefined,
   warn: () => undefined,
@@ -45,7 +54,9 @@ describe("sendWelcomeDm", () => {
 
     expect(result).toBe("sent");
     expect(messages).toHaveLength(1);
+    expect(WELCOME_DM_MESSAGE).toBe(expectedWelcomeDmMessage);
     expect(messages[0]?.content).toBe(WELCOME_DM_MESSAGE);
+    expect(messages[0]?.content).toBe(expectedWelcomeDmMessage);
     expect(messages[0]?.allowedMentions).toEqual({ parse: [] });
   });
 
