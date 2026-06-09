@@ -1,6 +1,6 @@
 import type { Attachment, ChatInputCommandInteraction } from "discord.js";
 import { MessageFlags } from "discord.js";
-import type { ReaperConfig } from "./config.js";
+import type { GalleryConfig } from "./config.js";
 import { ReaperError } from "./errors.js";
 import { submitDiscordGalleryImage, type DiscordGalleryPayload, type SupabaseIngestResponse } from "./supabase.js";
 
@@ -17,7 +17,7 @@ export interface SubmitInput {
 
 export function buildDiscordGalleryPayload(
   input: SubmitInput,
-  config: Pick<ReaperConfig, "discordGuildId" | "discordGalleryChannelId">,
+  config: Pick<GalleryConfig, "discordGuildId" | "discordGalleryChannelId">,
 ): DiscordGalleryPayload {
   if (input.guildId !== config.discordGuildId) {
     throw new ReaperError("wrong_guild", "Gallery submissions are only available inside the Mochirii Discord server.");
@@ -79,7 +79,7 @@ export function inputFromInteraction(interaction: ChatInputCommandInteraction): 
 
 export async function handleSubmitCommand(
   interaction: ChatInputCommandInteraction,
-  config: ReaperConfig,
+  config: GalleryConfig,
   submit = submitDiscordGalleryImage,
 ): Promise<void> {
   if (!interaction.deferred && !interaction.replied) {

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import type { ReaperConfig } from "../src/config.js";
+import type { GalleryConfig } from "../src/config.js";
 import { ReaperError } from "../src/errors.js";
 import { buildDiscordGalleryPayload, formatSubmitResponse, type SubmitInput } from "../src/submit.js";
 
-const config: Pick<ReaperConfig, "discordGuildId" | "discordGalleryChannelId"> = {
+const config: Pick<GalleryConfig, "discordGuildId" | "discordGalleryChannelId"> = {
   discordGuildId: "1078630751077142608",
   discordGalleryChannelId: "1508077313965817856",
 };

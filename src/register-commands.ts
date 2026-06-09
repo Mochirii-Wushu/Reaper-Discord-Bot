@@ -1,8 +1,8 @@
 import { REST, Routes } from "discord.js";
 import { commandData } from "./command.js";
-import { loadConfig } from "./config.js";
+import { loadGalleryConfig } from "./config.js";
 
-const config = loadConfig();
+const config = loadGalleryConfig();
 const rest = new REST({ version: "10" }).setToken(config.discordBotToken);
 
 await rest.put(
