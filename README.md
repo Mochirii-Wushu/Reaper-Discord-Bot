@@ -1,6 +1,6 @@
 # Reaper
 
-Private Reaper command and contract helper for Mōchirīī gallery submissions.
+Private Reaper command and contract helper for Mōchirīī gallery submissions and Gateway-only member welcome DMs.
 
 Production gallery submissions now use the Supabase-hosted Discord Interactions webhook in the Mochirii website repo:
 
@@ -8,7 +8,29 @@ Production gallery submissions now use the Supabase-hosted Discord Interactions 
 https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-interactions
 ```
 
-This repository remains useful for guild command registration, contract tests, and a rollback Gateway runtime reference. Do not deploy the Gateway bot as the primary production runtime unless a later approved plan reintroduces a host/process manager.
+This repository remains useful for guild command registration, contract tests, a rollback Gallery Gateway runtime reference, and the separate welcome-DM Gateway worker. Do not move slash-command production handling away from Supabase unless a later approved plan changes that architecture.
+
+## Welcome DM Gateway Worker
+
+New-member welcome DMs require a persistent Discord Gateway connection because Discord member-join notifications are Gateway events, not Interactions webhooks. Supabase Edge Functions and Vercel Functions are not the right runtime for that long-running connection.
+
+Enable Discord Developer Portal > Reaper > Bot > Privileged Gateway Intents > Server Members Intent before deploying this worker.
+
+The worker listens for `guildMemberAdd`, ignores bots and other guilds, then sends this exact DM with mentions disabled:
+
+```text
+Welcome to Mōchirīī pretty guildies!
+
+For more guild info, flutter over to https://mochirii.com & make sure to sync your Discord account so all the hidden guild doors unlock properly.
+
+To view & interact with the WWM guild channels, you’ll need the Mōchirīī guild role. If you want to submit gallery images to the guild website & enjoy other guild-exclusive features, you’ll also need the Verified role.
+
+Introduce yourself with your in-game guild title so we can add it to your role list & sync it with our guild site ranking system.
+
+Mōchirīī is constantly evolving, if you have any questions, get stuck, or feel a tiny bit lost in the clouds, please DM a Moderator anytime. We’re so excited to have you here!
+```
+
+If a member blocks DMs, Reaper records a redacted warning and does not post a public fallback message.
 
 ## Current Contract
 
@@ -36,7 +58,7 @@ The public Discord command contract is:
    bun run register:guild
    ```
 
-4. Run the rollback Gateway runtime only when explicitly needed for local contract testing:
+4. Run the Gateway worker when an approved persistent host is available:
 
    ```sh
    bun run dev
@@ -47,9 +69,12 @@ The public Discord command contract is:
 - `DISCORD_BOT_TOKEN`
 - `DISCORD_APPLICATION_ID`
 - `DISCORD_GUILD_ID`
+- `WELCOME_DM_ENABLED`
 - `DISCORD_GALLERY_CHANNEL_ID`
 - `SUPABASE_FUNCTIONS_URL`
 - `DISCORD_GALLERY_INGEST_SECRET`
+
+The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and optional `WELCOME_DM_ENABLED`. Gallery command registration and the rollback `/submit` Gateway fallback still require the other values.
 
 ## Validation
 
@@ -61,7 +86,8 @@ bun run build
 
 ## Production Runtime
 
-- Primary runtime: Supabase Edge Function `reaper-discord-interactions`.
+- Primary slash-command runtime: Supabase Edge Function `reaper-discord-interactions`.
+- Welcome DM runtime: persistent Gateway worker from this repo.
 - Discord Developer Portal Interactions Endpoint URL: `https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-interactions`.
 - Register guild commands before endpoint verification checks.
 - Keep Discord, Supabase, and Instagram secrets in Supabase secrets or local ignored files only.
@@ -70,5 +96,6 @@ bun run build
 
 - Keep submissions restricted to channel `1508077313965817856`.
 - Do not log tokens, ingest secrets, attachment signed URLs, or private payload bodies.
+- Do not grant Reaper Administrator, Message Content, Presences, or role-management permissions for the welcome DM worker.
 - If a token or secret is exposed, rotate it before restarting production.
 - No real Instagram post is created by this repo or by Discord submission alone.

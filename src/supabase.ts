@@ -1,4 +1,4 @@
-import type { ReaperConfig } from "./config.js";
+import type { GalleryConfig } from "./config.js";
 
 export interface DiscordGalleryPayload {
   guildId: string;
@@ -30,7 +30,7 @@ export interface SupabaseIngestResponse {
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 export async function submitDiscordGalleryImage(
-  config: Pick<ReaperConfig, "supabaseFunctionsUrl" | "discordGalleryIngestSecret">,
+  config: Pick<GalleryConfig, "supabaseFunctionsUrl" | "discordGalleryIngestSecret">,
   payload: DiscordGalleryPayload,
   fetchImpl: FetchLike = fetch,
 ): Promise<SupabaseIngestResponse> {
