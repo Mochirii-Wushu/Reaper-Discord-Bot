@@ -8,6 +8,9 @@ export interface ReaperConfig {
   discordBotToken: string;
   discordGuildId: string;
   welcomeDmEnabled: boolean;
+  pendingVerificationSyncEnabled: boolean;
+  pendingVerificationSyncUrl: string;
+  pendingVerificationSyncSecret: string;
 }
 
 export interface GalleryConfig extends ReaperConfig {
@@ -32,10 +35,23 @@ function optionalBoolean(env: NodeJS.ProcessEnv, key: string, defaultValue: bool
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
+  const pendingVerificationSyncEnabled = optionalBoolean(env, "REAPER_PENDING_VERIFICATION_SYNC_ENABLED", false);
+  const pendingVerificationSyncUrl = String(env.REAPER_PENDING_VERIFICATION_SYNC_URL || "").trim().replace(/\/+$/, "");
+  const pendingVerificationSyncSecret = String(env.REAPER_PENDING_VERIFICATION_SYNC_SECRET || "").trim();
+
+  if (pendingVerificationSyncEnabled && (!pendingVerificationSyncUrl || !pendingVerificationSyncSecret)) {
+    throw new Error(
+      "REAPER_PENDING_VERIFICATION_SYNC_URL and REAPER_PENDING_VERIFICATION_SYNC_SECRET are required when pending verification sync is enabled.",
+    );
+  }
+
   return {
     discordBotToken: requireEnv(env, "DISCORD_BOT_TOKEN"),
     discordGuildId: requireEnv(env, "DISCORD_GUILD_ID"),
     welcomeDmEnabled: optionalBoolean(env, "WELCOME_DM_ENABLED", true),
+    pendingVerificationSyncEnabled,
+    pendingVerificationSyncUrl,
+    pendingVerificationSyncSecret,
   };
 }
 

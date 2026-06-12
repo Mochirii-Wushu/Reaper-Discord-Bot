@@ -32,6 +32,22 @@ Mōchirīī is constantly evolving, if you have any questions, get stuck, or fee
 
 If a member blocks DMs, Reaper records a redacted warning and does not post a public fallback message.
 
+## Pending Verification Forwarder
+
+Pending-verification forwarding is a second release and is disabled by default with:
+
+```text
+REAPER_PENDING_VERIFICATION_SYNC_ENABLED=false
+```
+
+When approved and enabled, the Gateway worker posts `guildMemberAdd` and role-changing `guildMemberUpdate` events to the Mochirii Supabase Edge Function:
+
+```text
+https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-member-sync
+```
+
+The worker uses only `Guilds` and `GuildMembers` intents. It does not mutate Discord roles or channel permission overwrites directly and does not store Supabase service-role keys. The Edge Function owns the current-member fetch, conflict checks, max-mutation guard, tracked `VIEW_CHANNEL` overwrite writes, and redacted `discord_sync_log` entries.
+
 ## Current Contract
 
 The public Discord command contract is:
@@ -70,6 +86,9 @@ The public Discord command contract is:
 - `DISCORD_APPLICATION_ID`
 - `DISCORD_GUILD_ID`
 - `WELCOME_DM_ENABLED`
+- `REAPER_PENDING_VERIFICATION_SYNC_ENABLED`
+- `REAPER_PENDING_VERIFICATION_SYNC_URL`
+- `REAPER_PENDING_VERIFICATION_SYNC_SECRET`
 - `DISCORD_GALLERY_CHANNEL_ID`
 - `SUPABASE_FUNCTIONS_URL`
 - `DISCORD_GALLERY_INGEST_SECRET`
