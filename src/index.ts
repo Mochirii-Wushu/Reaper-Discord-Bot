@@ -1,5 +1,6 @@
 import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
 import { loadConfig, loadGalleryConfig } from "./config.js";
+import { memberRolesChanged, syncPendingVerificationMember } from "./pending-verification.js";
 import { handleSubmitCommand } from "./submit.js";
 import { sendWelcomeDm } from "./welcome.js";
 
@@ -11,7 +12,34 @@ client.once(Events.ClientReady, (readyClient) => {
 });
 
 client.on(Events.GuildMemberAdd, async (member) => {
-  await sendWelcomeDm(member, config);
+  const results = await Promise.allSettled([
+    sendWelcomeDm(member, config),
+    syncPendingVerificationMember(member, "guildMemberAdd", config, console, fetch, null),
+  ]);
+
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.warn("guild member add handler task failed", {
+        error: result.reason instanceof Error ? result.reason.message : "Unknown error",
+      });
+    }
+  }
+});
+
+client.on(Events.GuildMemberUpdate, async (before, after) => {
+  if (!memberRolesChanged(before, after)) return;
+  const result = await syncPendingVerificationMember(
+    after,
+    "guildMemberUpdate",
+    config,
+    console,
+    fetch,
+    null,
+  );
+
+  if (result === "post_failed") {
+    console.warn("guild member update pending verification task failed");
+  }
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {

@@ -6,6 +6,9 @@ const config: ReaperConfig = {
   discordBotToken: "test-token",
   discordGuildId: "1078630751077142608",
   welcomeDmEnabled: true,
+  pendingVerificationSyncEnabled: false,
+  pendingVerificationSyncUrl: "",
+  pendingVerificationSyncSecret: "",
 };
 const expectedWelcomeDmMessage = `Welcome to Mōchirīī pretty guildies!
 
