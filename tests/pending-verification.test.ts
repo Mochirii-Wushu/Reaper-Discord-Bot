@@ -14,6 +14,8 @@ const baseConfig: ReaperConfig = {
   pendingVerificationSyncEnabled: true,
   pendingVerificationSyncUrl: "https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-member-sync",
   pendingVerificationSyncSecret: "local-sync-secret",
+  pendingVerificationSyncTimeoutMs: 5000,
+  pendingVerificationSyncMaxAttempts: 2,
 };
 
 const quietLogger = {
@@ -68,6 +70,7 @@ describe("syncPendingVerificationMember", () => {
       quietLogger,
       async (input, init) => {
         requests.push(new Request(input, init));
+        expect(init?.signal).toBeInstanceOf(AbortSignal);
         return new Response(JSON.stringify({ ok: true, status: "applied", discordWriteCount: 1 }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
@@ -88,6 +91,190 @@ describe("syncPendingVerificationMember", () => {
       gateway_sequence: 123,
       occurred_at: expect.any(String),
     });
+  });
+
+  test("retries transient Edge responses with one immutable payload and redacted logs", async () => {
+    const warnings: unknown[] = [];
+    const logs: unknown[] = [];
+    const requestBodies: string[] = [];
+    const retryDelays: number[] = [];
+    let attempts = 0;
+
+    const result = await syncPendingVerificationMember(
+      member(),
+      "guildMemberAdd",
+      { ...baseConfig, pendingVerificationSyncMaxAttempts: 2 },
+      {
+        log: (...args: unknown[]) => logs.push(args),
+        warn: (...args: unknown[]) => warnings.push(args),
+      },
+      async (_input, init) => {
+        attempts += 1;
+        requestBodies.push(String(init?.body));
+        if (attempts === 1) return new Response(JSON.stringify({ ok: false }), { status: 503 });
+        return new Response(JSON.stringify({ ok: true, status: "preview", conflictCount: 0 }), { status: 200 });
+      },
+      null,
+      async (delayMs) => {
+        retryDelays.push(delayMs);
+      },
+    );
+
+    expect(result).toBe("posted");
+    expect(attempts).toBe(2);
+    expect(requestBodies).toHaveLength(2);
+    expect(requestBodies[0]).toBe(requestBodies[1]);
+    expect(retryDelays).toEqual([250]);
+    expect(JSON.stringify(warnings)).toContain("retrying");
+    const logText = JSON.stringify([...warnings, ...logs]);
+    expect(logText).not.toContain(baseConfig.pendingVerificationSyncSecret);
+    expect(logText).not.toContain(SYNTHETIC_DISCORD_IDS.guild);
+    expect(logText).not.toContain(SYNTHETIC_DISCORD_IDS.member);
+    expect(logText).toContain(`...${SYNTHETIC_DISCORD_IDS.guild.slice(-4)}`);
+    expect(logText).toContain(`...${SYNTHETIC_DISCORD_IDS.member.slice(-4)}`);
+  });
+
+  test("honors a bounded Retry-After response before retrying", async () => {
+    const retryDelays: number[] = [];
+    let attempts = 0;
+    const result = await syncPendingVerificationMember(
+      member(),
+      "guildMemberUpdate",
+      baseConfig,
+      quietLogger,
+      async () => {
+        attempts += 1;
+        if (attempts === 1) {
+          return new Response("", { status: 429, headers: { "Retry-After": "1" } });
+        }
+        return new Response(JSON.stringify({ ok: true, status: "applied" }), { status: 200 });
+      },
+      null,
+      async (delayMs) => {
+        retryDelays.push(delayMs);
+      },
+    );
+
+    expect(result).toBe("posted");
+    expect(attempts).toBe(2);
+    expect(retryDelays).toEqual([1000]);
+  });
+
+  test("fails closed when Retry-After exceeds the retry-delay budget", async () => {
+    const warnings: unknown[] = [];
+    let attempts = 0;
+    const result = await syncPendingVerificationMember(
+      member(),
+      "guildMemberUpdate",
+      baseConfig,
+      {
+        log: () => undefined,
+        warn: (...args: unknown[]) => warnings.push(args),
+      },
+      async () => {
+        attempts += 1;
+        return new Response("", { status: 429, headers: { "Retry-After": "6" } });
+      },
+      null,
+      async () => {
+        throw new Error("wait must not run");
+      },
+    );
+
+    expect(result).toBe("post_failed");
+    expect(attempts).toBe(1);
+    expect(JSON.stringify(warnings)).toContain("retry_after_exceeds_budget");
+  });
+
+  test("sanitizes the successful response summary before logging", async () => {
+    const logs: unknown[] = [];
+    const result = await syncPendingVerificationMember(
+      member(),
+      "guildMemberAdd",
+      baseConfig,
+      {
+        log: (...args: unknown[]) => logs.push(args),
+        warn: () => undefined,
+      },
+      async () => new Response(JSON.stringify({
+        ok: true,
+        status: `applied-${baseConfig.pendingVerificationSyncSecret}`,
+        discordWriteCount: Number.MAX_SAFE_INTEGER,
+        registryWriteCount: -1,
+        conflictCount: "not-a-count",
+      }), { status: 200 }),
+    );
+
+    expect(result).toBe("posted");
+    const logText = JSON.stringify(logs);
+    expect(logText).not.toContain(baseConfig.pendingVerificationSyncSecret);
+    expect(logText).toContain('"status":"unknown"');
+    expect(logText).toContain('"discordWriteCount":0');
+    expect(logText).toContain('"registryWriteCount":0');
+    expect(logText).toContain('"conflictCount":0');
+  });
+
+  test("does not retry non-transient Edge conflicts", async () => {
+    let attempts = 0;
+    const result = await syncPendingVerificationMember(
+      member(),
+      "guildMemberAdd",
+      { ...baseConfig, pendingVerificationSyncMaxAttempts: 3 },
+      quietLogger,
+      async () => {
+        attempts += 1;
+        return new Response(JSON.stringify({ ok: false, conflictCount: 1 }), { status: 409 });
+      },
+    );
+
+    expect(result).toBe("post_failed");
+    expect(attempts).toBe(1);
+  });
+
+  test("handles fetch failures without logging secrets", async () => {
+    const warnings: unknown[] = [];
+    const result = await syncPendingVerificationMember(
+      member(),
+      "guildMemberUpdate",
+      { ...baseConfig, pendingVerificationSyncMaxAttempts: 1 },
+      {
+        log: () => undefined,
+        warn: (...args: unknown[]) => warnings.push(args),
+      },
+      async () => {
+        throw new TypeError(`network failed for ${baseConfig.pendingVerificationSyncSecret}`);
+      },
+    );
+
+    expect(result).toBe("post_failed");
+    const warningText = JSON.stringify(warnings);
+    expect(warningText).toContain("TypeError");
+    expect(warningText).not.toContain(baseConfig.pendingVerificationSyncSecret);
+  });
+
+  test("aborts an attempt after the configured timeout", async () => {
+    const warnings: unknown[] = [];
+    const result = await syncPendingVerificationMember(
+      member(),
+      "guildMemberUpdate",
+      {
+        ...baseConfig,
+        pendingVerificationSyncTimeoutMs: 10,
+        pendingVerificationSyncMaxAttempts: 1,
+      },
+      {
+        log: () => undefined,
+        warn: (...args: unknown[]) => warnings.push(args),
+      },
+      async (_input, init) => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(new DOMException("request timed out", "AbortError"));
+        }, { once: true });
+      }),
+    );
+
+    expect(result).toBe("post_failed");
+    expect(JSON.stringify(warnings)).toContain("AbortError");
   });
 
   test("ignores bots and other guilds", async () => {
@@ -152,6 +339,8 @@ describe("loadConfig pending verification sync", () => {
     expect(config.pendingVerificationSyncEnabled).toBe(false);
     expect(config.pendingVerificationSyncUrl).toBe("");
     expect(config.pendingVerificationSyncSecret).toBe("");
+    expect(config.pendingVerificationSyncTimeoutMs).toBe(5000);
+    expect(config.pendingVerificationSyncMaxAttempts).toBe(2);
   });
 
   test("requires endpoint URL and secret when enabled", () => {
@@ -162,5 +351,38 @@ describe("loadConfig pending verification sync", () => {
         REAPER_PENDING_VERIFICATION_SYNC_ENABLED: "true",
       }),
     ).toThrow("REAPER_PENDING_VERIFICATION_SYNC_URL");
+  });
+
+  test("loads bounded sync retry settings", () => {
+    const config = loadConfig({
+      DISCORD_BOT_TOKEN: "token",
+      DISCORD_GUILD_ID: SYNTHETIC_DISCORD_IDS.guild,
+      REAPER_PENDING_VERIFICATION_SYNC_ENABLED: "true",
+      REAPER_PENDING_VERIFICATION_SYNC_URL: "https://example.com/functions/v1/reaper-discord-member-sync",
+      REAPER_PENDING_VERIFICATION_SYNC_SECRET: "secret",
+      REAPER_PENDING_VERIFICATION_SYNC_TIMEOUT_MS: "2500",
+      REAPER_PENDING_VERIFICATION_SYNC_MAX_ATTEMPTS: "3",
+    });
+
+    expect(config.pendingVerificationSyncTimeoutMs).toBe(2500);
+    expect(config.pendingVerificationSyncMaxAttempts).toBe(3);
+  });
+
+  test("rejects unbounded sync retry settings", () => {
+    expect(() =>
+      loadConfig({
+        DISCORD_BOT_TOKEN: "token",
+        DISCORD_GUILD_ID: SYNTHETIC_DISCORD_IDS.guild,
+        REAPER_PENDING_VERIFICATION_SYNC_TIMEOUT_MS: "0",
+      }),
+    ).toThrow("REAPER_PENDING_VERIFICATION_SYNC_TIMEOUT_MS");
+
+    expect(() =>
+      loadConfig({
+        DISCORD_BOT_TOKEN: "token",
+        DISCORD_GUILD_ID: SYNTHETIC_DISCORD_IDS.guild,
+        REAPER_PENDING_VERIFICATION_SYNC_MAX_ATTEMPTS: "25",
+      }),
+    ).toThrow("REAPER_PENDING_VERIFICATION_SYNC_MAX_ATTEMPTS");
   });
 });

@@ -46,7 +46,7 @@ When approved and enabled, the Gateway worker posts `guildMemberAdd` and role-ch
 https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-member-sync
 ```
 
-The worker uses only `Guilds` and `GuildMembers` intents. It does not mutate Discord roles or channel permission overwrites directly and does not store Supabase service-role keys. The Edge Function owns the current-member fetch, conflict checks, max-mutation guard, tracked `VIEW_CHANNEL` overwrite writes, and redacted `discord_sync_log` entries.
+The worker uses only `Guilds` and `GuildMembers` intents. It does not mutate Discord roles or channel permission overwrites directly and does not store Supabase service-role keys. The Edge Function owns the current-member fetch, conflict checks, max-mutation guard, tracked `VIEW_CHANNEL` overwrite writes, and redacted `discord_sync_log` entries. Retries reuse one byte-identical desired-state payload; the Edge Function re-fetches current member state before calculating changes, so a repeated delivery converges without duplicating an already-applied overwrite.
 
 ## Current Contract
 
@@ -89,6 +89,8 @@ The public Discord command contract is:
 - `REAPER_PENDING_VERIFICATION_SYNC_ENABLED`
 - `REAPER_PENDING_VERIFICATION_SYNC_URL`
 - `REAPER_PENDING_VERIFICATION_SYNC_SECRET`
+- `REAPER_PENDING_VERIFICATION_SYNC_TIMEOUT_MS` (optional, defaults to `5000`)
+- `REAPER_PENDING_VERIFICATION_SYNC_MAX_ATTEMPTS` (optional, defaults to `2`)
 - `DISCORD_GALLERY_CHANNEL_ID`
 - `SUPABASE_FUNCTIONS_URL`
 - `DISCORD_GALLERY_INGEST_SECRET`
@@ -110,6 +112,14 @@ bun run build
 - Discord Developer Portal Interactions Endpoint URL: `https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-interactions`.
 - Register guild commands before endpoint verification checks.
 - Keep Discord, Supabase, and Instagram secrets in Supabase secrets or local ignored files only.
+- Pending-verification forwarding uses bounded Edge Function attempts and per-attempt timeouts. Logs stay redacted and record only status labels, short snowflake suffixes, counts, and attempt numbers.
+- Retryable `408`, `429`, and `5xx` responses use bounded backoff. A valid `Retry-After` is honored only within the five-second retry-delay budget; a larger delay fails closed for a later Gateway event or operator retry.
+
+## Release Boundary
+
+- This source change does not enable pending-verification forwarding, deploy Reaper, change Discord or Supabase configuration, or send a Discord message.
+- Local and pull-request validation uses synthetic fixtures with no provider network calls. Green source tests do not prove that a production Gateway worker is running this revision.
+- Enabling the forwarder, publishing a runtime image, or changing a live worker requires a separately reviewed deployment packet with exact source, configuration, rollback, and live readback evidence.
 
 ## Deployment Guardrails
 
