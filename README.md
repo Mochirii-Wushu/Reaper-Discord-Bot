@@ -89,6 +89,8 @@ The public Discord command contract is:
 - `REAPER_PENDING_VERIFICATION_SYNC_ENABLED`
 - `REAPER_PENDING_VERIFICATION_SYNC_URL`
 - `REAPER_PENDING_VERIFICATION_SYNC_SECRET`
+- `REAPER_PENDING_VERIFICATION_SYNC_TIMEOUT_MS` (optional, defaults to `5000`)
+- `REAPER_PENDING_VERIFICATION_SYNC_MAX_ATTEMPTS` (optional, defaults to `2`)
 - `DISCORD_GALLERY_CHANNEL_ID`
 - `SUPABASE_FUNCTIONS_URL`
 - `DISCORD_GALLERY_INGEST_SECRET`
@@ -110,6 +112,7 @@ bun run build
 - Discord Developer Portal Interactions Endpoint URL: `https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-interactions`.
 - Register guild commands before endpoint verification checks.
 - Keep Discord, Supabase, and Instagram secrets in Supabase secrets or local ignored files only.
+- Pending-verification forwarding uses bounded Edge Function attempts and per-attempt timeouts. Logs stay redacted and record only status labels, short snowflake suffixes, counts, and attempt numbers.
 
 ## Deployment Guardrails
 

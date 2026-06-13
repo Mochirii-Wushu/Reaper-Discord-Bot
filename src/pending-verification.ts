@@ -56,40 +56,89 @@ export async function syncPendingVerificationMember(
   if (member.guild.id !== config.discordGuildId) return "ignored_guild";
   if (member.user.bot) return "ignored_bot";
 
-  const response = await fetchImpl(config.pendingVerificationSyncUrl, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "x-mochirii-reaper-member-sync-secret": config.pendingVerificationSyncSecret,
-    },
-    body: JSON.stringify({
-      event_type: eventType,
-      guild_id: member.guild.id,
-      discord_user_id: member.user.id,
-      roles: memberRoleIds(member),
-      gateway_sequence: gatewaySequence,
-      occurred_at: new Date().toISOString(),
-    }),
-  });
+  const payload = {
+    event_type: eventType,
+    guild_id: member.guild.id,
+    discord_user_id: member.user.id,
+    roles: memberRoleIds(member),
+    gateway_sequence: gatewaySequence,
+    occurred_at: new Date().toISOString(),
+  };
 
-  const text = await response.text();
+  let response: Response | null = null;
   let body: unknown = null;
-  try {
-    body = text ? JSON.parse(text) : null;
-  } catch {
-    body = null;
+  let attemptsUsed = 0;
+
+  for (let attempt = 1; attempt <= config.pendingVerificationSyncMaxAttempts; attempt += 1) {
+    attemptsUsed = attempt;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), config.pendingVerificationSyncTimeoutMs);
+    try {
+      response = await fetchImpl(config.pendingVerificationSyncUrl, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "x-mochirii-reaper-member-sync-secret": config.pendingVerificationSyncSecret,
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      const text = await response.text();
+      try {
+        body = text ? JSON.parse(text) : null;
+      } catch {
+        body = null;
+      }
+
+      if (response.ok) break;
+      if (!shouldRetrySyncResponse(response.status) || attempt >= config.pendingVerificationSyncMaxAttempts) {
+        logger.warn("pending verification member sync failed", {
+          guildId: redactedSnowflake(member.guild.id),
+          userId: redactedSnowflake(member.user.id),
+          eventType,
+          status: response.status,
+          attempt,
+          maxAttempts: config.pendingVerificationSyncMaxAttempts,
+        });
+        return "post_failed";
+      }
+      logger.warn("pending verification member sync retrying", {
+        guildId: redactedSnowflake(member.guild.id),
+        userId: redactedSnowflake(member.user.id),
+        eventType,
+        status: response.status,
+        attempt,
+        maxAttempts: config.pendingVerificationSyncMaxAttempts,
+      });
+    } catch (error) {
+      const errorName = error instanceof Error ? error.name : "UnknownError";
+      if (attempt >= config.pendingVerificationSyncMaxAttempts) {
+        logger.warn("pending verification member sync failed", {
+          guildId: redactedSnowflake(member.guild.id),
+          userId: redactedSnowflake(member.user.id),
+          eventType,
+          error: errorName,
+          attempt,
+          maxAttempts: config.pendingVerificationSyncMaxAttempts,
+        });
+        return "post_failed";
+      }
+      logger.warn("pending verification member sync retrying", {
+        guildId: redactedSnowflake(member.guild.id),
+        userId: redactedSnowflake(member.user.id),
+        eventType,
+        error: errorName,
+        attempt,
+        maxAttempts: config.pendingVerificationSyncMaxAttempts,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
-  if (!response.ok) {
-    logger.warn("pending verification member sync failed", {
-      guildId: redactedSnowflake(member.guild.id),
-      userId: redactedSnowflake(member.user.id),
-      eventType,
-      status: response.status,
-    });
-    return "post_failed";
-  }
+  if (!response?.ok) return "post_failed";
 
   const summary = body && typeof body === "object" && !Array.isArray(body)
     ? {
@@ -104,7 +153,12 @@ export async function syncPendingVerificationMember(
     guildId: redactedSnowflake(member.guild.id),
     userId: redactedSnowflake(member.user.id),
     eventType,
+    attempts: attemptsUsed,
     ...summary,
   });
   return "posted";
+}
+
+function shouldRetrySyncResponse(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
 }

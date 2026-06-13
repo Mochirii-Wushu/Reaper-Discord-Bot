@@ -9,6 +9,8 @@ const config: ReaperConfig = {
   pendingVerificationSyncEnabled: false,
   pendingVerificationSyncUrl: "",
   pendingVerificationSyncSecret: "",
+  pendingVerificationSyncTimeoutMs: 5000,
+  pendingVerificationSyncMaxAttempts: 2,
 };
 const expectedWelcomeDmMessage = `Welcome to Mōchirīī pretty guildies!
 

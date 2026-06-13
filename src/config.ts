@@ -11,6 +11,8 @@ export interface ReaperConfig {
   pendingVerificationSyncEnabled: boolean;
   pendingVerificationSyncUrl: string;
   pendingVerificationSyncSecret: string;
+  pendingVerificationSyncTimeoutMs: number;
+  pendingVerificationSyncMaxAttempts: number;
 }
 
 export interface GalleryConfig extends ReaperConfig {
@@ -34,10 +36,37 @@ function optionalBoolean(env: NodeJS.ProcessEnv, key: string, defaultValue: bool
   return ["1", "true", "yes", "on"].includes(value);
 }
 
+function optionalInteger(
+  env: NodeJS.ProcessEnv,
+  key: string,
+  defaultValue: number,
+  { min, max }: { min: number; max: number },
+): number {
+  const value = String(env[key] || "").trim();
+  if (!value) return defaultValue;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${key} must be an integer between ${min} and ${max}.`);
+  }
+  return parsed;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
   const pendingVerificationSyncEnabled = optionalBoolean(env, "REAPER_PENDING_VERIFICATION_SYNC_ENABLED", false);
   const pendingVerificationSyncUrl = String(env.REAPER_PENDING_VERIFICATION_SYNC_URL || "").trim().replace(/\/+$/, "");
   const pendingVerificationSyncSecret = String(env.REAPER_PENDING_VERIFICATION_SYNC_SECRET || "").trim();
+  const pendingVerificationSyncTimeoutMs = optionalInteger(
+    env,
+    "REAPER_PENDING_VERIFICATION_SYNC_TIMEOUT_MS",
+    5000,
+    { min: 500, max: 30000 },
+  );
+  const pendingVerificationSyncMaxAttempts = optionalInteger(
+    env,
+    "REAPER_PENDING_VERIFICATION_SYNC_MAX_ATTEMPTS",
+    2,
+    { min: 1, max: 5 },
+  );
 
   if (pendingVerificationSyncEnabled && (!pendingVerificationSyncUrl || !pendingVerificationSyncSecret)) {
     throw new Error(
@@ -52,6 +81,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
     pendingVerificationSyncEnabled,
     pendingVerificationSyncUrl,
     pendingVerificationSyncSecret,
+    pendingVerificationSyncTimeoutMs,
+    pendingVerificationSyncMaxAttempts,
   };
 }
 
