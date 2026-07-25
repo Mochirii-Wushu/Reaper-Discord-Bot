@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { ReaperConfig } from "../src/config.js";
 import { sendWelcomeDm, WELCOME_DM_MESSAGE } from "../src/welcome.js";
+import { SYNTHETIC_DISCORD_IDS } from "./discord-fixtures.js";
 
 const config: ReaperConfig = {
   discordBotToken: "test-token",
-  discordGuildId: "1078630751077142608",
+  discordGuildId: SYNTHETIC_DISCORD_IDS.guild,
   welcomeDmEnabled: true,
   pendingVerificationSyncEnabled: false,
   pendingVerificationSyncUrl: "",
@@ -31,10 +32,10 @@ function member(overrides: {
 } = {}) {
   return {
     guild: {
-      id: overrides.guildId || "1078630751077142608",
+      id: overrides.guildId || SYNTHETIC_DISCORD_IDS.guild,
     },
     user: {
-      id: "1508077313965817858",
+      id: SYNTHETIC_DISCORD_IDS.member,
       bot: overrides.bot || false,
       send: overrides.send || (async () => undefined),
     },
@@ -68,7 +69,7 @@ describe("sendWelcomeDm", () => {
 
     const result = await sendWelcomeDm(
       member({
-        guildId: "1078630751077142609",
+        guildId: SYNTHETIC_DISCORD_IDS.otherGuild,
         send: async () => {
           sent = true;
         },

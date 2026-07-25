@@ -113,7 +113,7 @@ bun run build
 
 ## Deployment Guardrails
 
-- Keep submissions restricted to channel `1508077313965817856`.
+- Keep submissions restricted to the channel configured by `DISCORD_GALLERY_CHANNEL_ID`; never commit its production value.
 - Do not log tokens, ingest secrets, attachment signed URLs, or private payload bodies.
 - Do not grant Reaper Administrator, Message Content, Presences, or role-management permissions for the welcome DM worker.
 - If a token or secret is exposed, rotate it before restarting production.

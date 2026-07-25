@@ -5,10 +5,11 @@ import {
   syncPendingVerificationMember,
   type PendingVerificationMemberLike,
 } from "../src/pending-verification.js";
+import { SYNTHETIC_DISCORD_IDS } from "./discord-fixtures.js";
 
 const baseConfig: ReaperConfig = {
   discordBotToken: "test-token",
-  discordGuildId: "1078630751077142608",
+  discordGuildId: SYNTHETIC_DISCORD_IDS.guild,
   welcomeDmEnabled: true,
   pendingVerificationSyncEnabled: true,
   pendingVerificationSyncUrl: "https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-member-sync",
@@ -28,14 +29,14 @@ function member(overrides: {
 } = {}): PendingVerificationMemberLike {
   return {
     guild: {
-      id: overrides.guildId || "1078630751077142608",
+      id: overrides.guildId || SYNTHETIC_DISCORD_IDS.guild,
     },
     user: {
-      id: overrides.userId || "1508077313965817858",
+      id: overrides.userId || SYNTHETIC_DISCORD_IDS.member,
       bot: overrides.bot || false,
     },
     roles: {
-      cache: new Map((overrides.roles || ["1468659807736299520"]).map((roleId) => [roleId, true])),
+      cache: new Map((overrides.roles || [SYNTHETIC_DISCORD_IDS.roleOne]).map((roleId) => [roleId, true])),
     },
   };
 }
@@ -61,7 +62,7 @@ describe("syncPendingVerificationMember", () => {
   test("posts redacted member event payload to the private Edge Function", async () => {
     const requests: Request[] = [];
     const result = await syncPendingVerificationMember(
-      member({ roles: ["1468659807736299520", "1078630751077142615"] }),
+      member({ roles: [SYNTHETIC_DISCORD_IDS.roleTwo, SYNTHETIC_DISCORD_IDS.roleOne] }),
       "guildMemberUpdate",
       baseConfig,
       quietLogger,
@@ -81,9 +82,9 @@ describe("syncPendingVerificationMember", () => {
     expect(request?.headers.get("x-mochirii-reaper-member-sync-secret")).toBe("local-sync-secret");
     expect(await request?.json()).toEqual({
       event_type: "guildMemberUpdate",
-      guild_id: "1078630751077142608",
-      discord_user_id: "1508077313965817858",
-      roles: ["1078630751077142615", "1468659807736299520"],
+      guild_id: SYNTHETIC_DISCORD_IDS.guild,
+      discord_user_id: SYNTHETIC_DISCORD_IDS.member,
+      roles: [SYNTHETIC_DISCORD_IDS.roleOne, SYNTHETIC_DISCORD_IDS.roleTwo],
       gateway_sequence: 123,
       occurred_at: expect.any(String),
     });
@@ -99,7 +100,7 @@ describe("syncPendingVerificationMember", () => {
     expect(await syncPendingVerificationMember(member({ bot: true }), "guildMemberAdd", baseConfig, quietLogger, fetchImpl)).toBe("ignored_bot");
     expect(
       await syncPendingVerificationMember(
-        member({ guildId: "1078630751077142609" }),
+        member({ guildId: SYNTHETIC_DISCORD_IDS.otherGuild }),
         "guildMemberAdd",
         baseConfig,
         quietLogger,
@@ -144,7 +145,7 @@ describe("loadConfig pending verification sync", () => {
   test("does not require sync endpoint secrets while disabled", () => {
     const config = loadConfig({
       DISCORD_BOT_TOKEN: "token",
-      DISCORD_GUILD_ID: "1078630751077142608",
+      DISCORD_GUILD_ID: SYNTHETIC_DISCORD_IDS.guild,
       REAPER_PENDING_VERIFICATION_SYNC_ENABLED: "false",
     });
 
@@ -157,7 +158,7 @@ describe("loadConfig pending verification sync", () => {
     expect(() =>
       loadConfig({
         DISCORD_BOT_TOKEN: "token",
-        DISCORD_GUILD_ID: "1078630751077142608",
+        DISCORD_GUILD_ID: SYNTHETIC_DISCORD_IDS.guild,
         REAPER_PENDING_VERIFICATION_SYNC_ENABLED: "true",
       }),
     ).toThrow("REAPER_PENDING_VERIFICATION_SYNC_URL");
