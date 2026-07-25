@@ -2,21 +2,22 @@ import { describe, expect, test } from "bun:test";
 import type { GalleryConfig } from "../src/config.js";
 import { ReaperError } from "../src/errors.js";
 import { buildDiscordGalleryPayload, formatSubmitResponse, type SubmitInput } from "../src/submit.js";
+import { SYNTHETIC_DISCORD_IDS, syntheticDiscordAttachmentUrl } from "./discord-fixtures.js";
 
 const config: Pick<GalleryConfig, "discordGuildId" | "discordGalleryChannelId"> = {
-  discordGuildId: "1078630751077142608",
-  discordGalleryChannelId: "1508077313965817856",
+  discordGuildId: SYNTHETIC_DISCORD_IDS.guild,
+  discordGalleryChannelId: SYNTHETIC_DISCORD_IDS.galleryChannel,
 };
 
 function input(overrides: Partial<SubmitInput> = {}): SubmitInput {
   return {
-    guildId: "1078630751077142608",
-    channelId: "1508077313965817856",
-    messageId: "1508077313965817857",
-    discordUserId: "1508077313965817858",
+    guildId: SYNTHETIC_DISCORD_IDS.guild,
+    channelId: SYNTHETIC_DISCORD_IDS.galleryChannel,
+    messageId: SYNTHETIC_DISCORD_IDS.message,
+    discordUserId: SYNTHETIC_DISCORD_IDS.member,
     image: {
-      id: "1508077313965817859",
-      url: "https://cdn.discordapp.com/attachments/1508077313965817856/1508077313965817859/image.jpg",
+      id: SYNTHETIC_DISCORD_IDS.attachment,
+      url: syntheticDiscordAttachmentUrl(),
       contentType: "image/jpeg",
       size: 12345,
       name: "image.jpg",
@@ -48,7 +49,9 @@ describe("buildDiscordGalleryPayload", () => {
   });
 
   test("rejects the wrong gallery channel before Supabase ingest", () => {
-    expect(() => buildDiscordGalleryPayload(input({ channelId: "1508077313965817000" }), config)).toThrow(ReaperError);
+    expect(() =>
+      buildDiscordGalleryPayload(input({ channelId: SYNTHETIC_DISCORD_IDS.otherChannel }), config),
+    ).toThrow(ReaperError);
   });
 });
 

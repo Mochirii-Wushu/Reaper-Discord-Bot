@@ -1,13 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { submitDiscordGalleryImage, type DiscordGalleryPayload } from "../src/supabase.js";
+import { SYNTHETIC_DISCORD_IDS, syntheticDiscordAttachmentUrl } from "./discord-fixtures.js";
 
 const payload: DiscordGalleryPayload = {
-  guildId: "1078630751077142608",
-  channelId: "1508077313965817856",
-  messageId: "1508077313965817857",
-  attachmentId: "1508077313965817858",
-  discordUserId: "1508077313965817859",
-  attachmentUrl: "https://cdn.discordapp.com/attachments/1508077313965817856/1508077313965817858/image.jpg",
+  guildId: SYNTHETIC_DISCORD_IDS.guild,
+  channelId: SYNTHETIC_DISCORD_IDS.galleryChannel,
+  messageId: SYNTHETIC_DISCORD_IDS.message,
+  attachmentId: SYNTHETIC_DISCORD_IDS.attachment,
+  discordUserId: SYNTHETIC_DISCORD_IDS.member,
+  attachmentUrl: syntheticDiscordAttachmentUrl(),
   mimeType: "image/jpeg",
   sizeBytes: 12345,
   title: "Lantern Moment",
