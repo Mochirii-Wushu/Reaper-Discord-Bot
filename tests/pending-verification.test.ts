@@ -214,6 +214,58 @@ describe("syncPendingVerificationMember", () => {
     expect(logText).toContain('"conflictCount":0');
   });
 
+  test("does not read a response whose declared body exceeds the summary limit", async () => {
+    const logs: unknown[] = [];
+    const result = await syncPendingVerificationMember(
+      member(),
+      "guildMemberAdd",
+      baseConfig,
+      {
+        log: (...args: unknown[]) => logs.push(args),
+        warn: () => undefined,
+      },
+      async () => new Response(`{"status":"${baseConfig.pendingVerificationSyncSecret}"}`, {
+        status: 200,
+        headers: { "Content-Length": "16385" },
+      }),
+    );
+
+    expect(result).toBe("posted");
+    const logText = JSON.stringify(logs);
+    expect(logText).not.toContain(baseConfig.pendingVerificationSyncSecret);
+    expect(logText).toContain('"status":"unknown"');
+  });
+
+  test("stops reading a chunked response after the summary byte limit", async () => {
+    const logs: unknown[] = [];
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(10_000));
+        controller.enqueue(new Uint8Array(10_000));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+
+    const result = await syncPendingVerificationMember(
+      member(),
+      "guildMemberAdd",
+      baseConfig,
+      {
+        log: (...args: unknown[]) => logs.push(args),
+        warn: () => undefined,
+      },
+      async () => new Response(body, { status: 200 }),
+    );
+
+    await Promise.resolve();
+    expect(result).toBe("posted");
+    expect(cancelled).toBe(true);
+    expect(JSON.stringify(logs)).toContain('"status":"unknown"');
+  });
+
   test("does not retry non-transient Edge conflicts", async () => {
     let attempts = 0;
     const result = await syncPendingVerificationMember(
@@ -274,6 +326,44 @@ describe("syncPendingVerificationMember", () => {
     );
 
     expect(result).toBe("post_failed");
+    expect(JSON.stringify(warnings)).toContain("AbortError");
+  });
+
+  test("keeps the attempt timeout active while reading the response body", async () => {
+    const warnings: unknown[] = [];
+    let cancelled = false;
+    let pendingChunk: ReturnType<typeof setTimeout> | null = null;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        pendingChunk = setTimeout(() => {
+          controller.enqueue(new TextEncoder().encode('{"status":"applied"}'));
+          controller.close();
+        }, 100);
+      },
+      cancel() {
+        if (pendingChunk) clearTimeout(pendingChunk);
+        cancelled = true;
+      },
+    });
+
+    const result = await syncPendingVerificationMember(
+      member(),
+      "guildMemberUpdate",
+      {
+        ...baseConfig,
+        pendingVerificationSyncTimeoutMs: 10,
+        pendingVerificationSyncMaxAttempts: 1,
+      },
+      {
+        log: () => undefined,
+        warn: (...args: unknown[]) => warnings.push(args),
+      },
+      async () => new Response(body, { status: 200 }),
+    );
+
+    await Promise.resolve();
+    expect(result).toBe("post_failed");
+    expect(cancelled).toBe(true);
     expect(JSON.stringify(warnings)).toContain("AbortError");
   });
 
@@ -366,6 +456,25 @@ describe("loadConfig pending verification sync", () => {
 
     expect(config.pendingVerificationSyncTimeoutMs).toBe(2500);
     expect(config.pendingVerificationSyncMaxAttempts).toBe(3);
+  });
+
+  test("requires an absolute credential-free HTTPS sync target when enabled", () => {
+    for (const target of [
+      "/functions/v1/reaper-discord-member-sync",
+      "//example.com/functions/v1/reaper-discord-member-sync",
+      "http://example.com/functions/v1/reaper-discord-member-sync",
+      "https://user@example.com/functions/v1/reaper-discord-member-sync",
+      "https://user:password@example.com/functions/v1/reaper-discord-member-sync",
+      "https://example.com@attacker.invalid/functions/v1/reaper-discord-member-sync",
+    ]) {
+      expect(() => loadConfig({
+        DISCORD_BOT_TOKEN: "token",
+        DISCORD_GUILD_ID: SYNTHETIC_DISCORD_IDS.guild,
+        REAPER_PENDING_VERIFICATION_SYNC_ENABLED: "true",
+        REAPER_PENDING_VERIFICATION_SYNC_URL: target,
+        REAPER_PENDING_VERIFICATION_SYNC_SECRET: "secret",
+      })).toThrow("absolute HTTPS URL without embedded credentials");
+    }
   });
 
   test("rejects unbounded sync retry settings", () => {

@@ -51,6 +51,23 @@ function optionalInteger(
   return parsed;
 }
 
+function validatePendingVerificationSyncUrl(value: string): void {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(
+      "REAPER_PENDING_VERIFICATION_SYNC_URL must be an absolute HTTPS URL without embedded credentials.",
+    );
+  }
+
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new Error(
+      "REAPER_PENDING_VERIFICATION_SYNC_URL must be an absolute HTTPS URL without embedded credentials.",
+    );
+  }
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
   const pendingVerificationSyncEnabled = optionalBoolean(env, "REAPER_PENDING_VERIFICATION_SYNC_ENABLED", false);
   const pendingVerificationSyncUrl = String(env.REAPER_PENDING_VERIFICATION_SYNC_URL || "").trim().replace(/\/+$/, "");
@@ -73,6 +90,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
       "REAPER_PENDING_VERIFICATION_SYNC_URL and REAPER_PENDING_VERIFICATION_SYNC_SECRET are required when pending verification sync is enabled.",
     );
   }
+  if (pendingVerificationSyncEnabled) validatePendingVerificationSyncUrl(pendingVerificationSyncUrl);
 
   return {
     discordBotToken: requireEnv(env, "DISCORD_BOT_TOKEN"),

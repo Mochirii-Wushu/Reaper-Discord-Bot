@@ -29,10 +29,17 @@ export type WaitLike = (delayMs: number) => Promise<void>;
 
 const SYNC_RETRY_BASE_DELAY_MS = 250;
 const SYNC_RETRY_MAX_DELAY_MS = 5000;
-const SYNC_RESPONSE_BODY_MAX_CHARS = 16_384;
+const SYNC_RESPONSE_BODY_MAX_BYTES = 16_384;
 const SAFE_SYNC_STATUSES = new Set(["applied", "ok", "preview"]);
 
 const wait: WaitLike = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs));
+
+type SyncResponseSummary = {
+  status: string;
+  discordWriteCount: number;
+  registryWriteCount: number;
+  conflictCount: number;
+};
 
 function redactedSnowflake(value: string): string {
   return value.length > 4 ? `...${value.slice(-4)}` : "[redacted]";
@@ -95,21 +102,94 @@ function safeStatus(value: unknown): string {
   return SAFE_SYNC_STATUSES.has(status) ? status : "unknown";
 }
 
-async function responseSummary(response: Response): Promise<{
-  status: string;
-  discordWriteCount: number;
-  registryWriteCount: number;
-  conflictCount: number;
-}> {
-  const text = await response.text();
-  if (!text || text.length > SYNC_RESPONSE_BODY_MAX_CHARS) {
-    return { status: "ok", discordWriteCount: 0, registryWriteCount: 0, conflictCount: 0 };
+function zeroSummary(status = "unknown"): SyncResponseSummary {
+  return { status, discordWriteCount: 0, registryWriteCount: 0, conflictCount: 0 };
+}
+
+function abortError(): Error {
+  const error = new Error("Pending-verification response handling timed out.");
+  error.name = "AbortError";
+  return error;
+}
+
+async function readChunkWithAbort(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal: AbortSignal,
+): Promise<Awaited<ReturnType<ReadableStreamDefaultReader<Uint8Array>["read"]>>> {
+  if (signal.aborted) throw abortError();
+
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      signal.removeEventListener("abort", onAbort);
+      reject(abortError());
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    reader.read().then(
+      (result) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(result);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
+async function boundedResponseText(response: Response, signal: AbortSignal): Promise<string | null> {
+  const contentLength = String(response.headers.get("Content-Length") || "").trim();
+  if (/^\d+$/.test(contentLength)) {
+    const bytes = Number(contentLength);
+    if (!Number.isSafeInteger(bytes) || bytes > SYNC_RESPONSE_BODY_MAX_BYTES) {
+      void response.body?.cancel().catch(() => undefined);
+      return null;
+    }
+  }
+
+  if (!response.body) return "";
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let bytesRead = 0;
+  let text = "";
+
+  try {
+    while (true) {
+      const chunk = await readChunkWithAbort(reader, signal);
+      if (chunk.done) break;
+      bytesRead += chunk.value.byteLength;
+      if (bytesRead > SYNC_RESPONSE_BODY_MAX_BYTES) {
+        void reader.cancel().catch(() => undefined);
+        return null;
+      }
+      text += decoder.decode(chunk.value, { stream: true });
+    }
+    text += decoder.decode();
+    return text;
+  } catch (error) {
+    void reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch {
+      // Best-effort cleanup after an aborted pending read.
+    }
+  }
+}
+
+async function responseSummary(response: Response, signal: AbortSignal): Promise<SyncResponseSummary> {
+  const text = await boundedResponseText(response, signal);
+  if (text === null) return zeroSummary();
+  if (!text) {
+    return zeroSummary("ok");
   }
 
   try {
     const body: unknown = JSON.parse(text);
     if (!body || typeof body !== "object" || Array.isArray(body)) {
-      return { status: "ok", discordWriteCount: 0, registryWriteCount: 0, conflictCount: 0 };
+      return zeroSummary();
     }
     const record = body as Record<string, unknown>;
     return {
@@ -119,7 +199,7 @@ async function responseSummary(response: Response): Promise<{
       conflictCount: safeCount(record.conflictCount),
     };
   } catch {
-    return { status: "ok", discordWriteCount: 0, registryWriteCount: 0, conflictCount: 0 };
+    return zeroSummary();
   }
 }
 
@@ -160,10 +240,10 @@ export async function syncPendingVerificationMember(
         body: requestBody,
         signal: controller.signal,
       });
-      clearTimeout(timeout);
 
       if (response.ok) {
-        const summary = await responseSummary(response);
+        const summary = await responseSummary(response, controller.signal);
+        clearTimeout(timeout);
         logger.log("pending verification member sync posted", {
           guildId: redactedSnowflake(member.guild.id),
           userId: redactedSnowflake(member.user.id),
@@ -174,6 +254,8 @@ export async function syncPendingVerificationMember(
         return "posted";
       }
 
+      void response.body?.cancel().catch(() => undefined);
+      clearTimeout(timeout);
       const decision = retryDecision(response, attempt);
       if (!decision.retry || attempt >= config.pendingVerificationSyncMaxAttempts) {
         logger.warn("pending verification member sync failed", {
