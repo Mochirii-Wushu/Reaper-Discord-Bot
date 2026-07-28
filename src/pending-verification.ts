@@ -282,7 +282,8 @@ export async function syncPendingVerificationMember(
     } catch (error) {
       clearTimeout(timeout);
       const errorName = error instanceof Error ? error.name : "UnknownError";
-      if (attempt >= config.pendingVerificationSyncMaxAttempts) {
+      const completionUnknown = errorName === "AbortError";
+      if (completionUnknown || attempt >= config.pendingVerificationSyncMaxAttempts) {
         logger.warn("pending verification member sync failed", {
           guildId: redactedSnowflake(member.guild.id),
           userId: redactedSnowflake(member.user.id),
@@ -290,6 +291,7 @@ export async function syncPendingVerificationMember(
           error: errorName,
           attempt,
           maxAttempts: config.pendingVerificationSyncMaxAttempts,
+          reason: completionUnknown ? "request_completion_unknown" : "attempt_budget_exhausted",
         });
         return "post_failed";
       }

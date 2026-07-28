@@ -329,6 +329,43 @@ describe("syncPendingVerificationMember", () => {
     expect(JSON.stringify(warnings)).toContain("AbortError");
   });
 
+  test("does not retry a timed-out request when remote completion is unknown", async () => {
+    const warnings: unknown[] = [];
+    let attempts = 0;
+    let waits = 0;
+
+    const result = await syncPendingVerificationMember(
+      member(),
+      "guildMemberUpdate",
+      {
+        ...baseConfig,
+        pendingVerificationSyncTimeoutMs: 10,
+        pendingVerificationSyncMaxAttempts: 3,
+      },
+      {
+        log: () => undefined,
+        warn: (...args: unknown[]) => warnings.push(args),
+      },
+      async (_input, init) => {
+        attempts += 1;
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("request timed out", "AbortError"));
+          }, { once: true });
+        });
+      },
+      null,
+      async () => {
+        waits += 1;
+      },
+    );
+
+    expect(result).toBe("post_failed");
+    expect(attempts).toBe(1);
+    expect(waits).toBe(0);
+    expect(JSON.stringify(warnings)).toContain("request_completion_unknown");
+  });
+
   test("keeps the attempt timeout active while reading the response body", async () => {
     const warnings: unknown[] = [];
     let cancelled = false;

@@ -115,6 +115,7 @@ bun run build
 - Pending-verification forwarding uses bounded Edge Function attempts and per-attempt timeouts. Logs stay redacted and record only status labels, short snowflake suffixes, counts, and attempt numbers.
 - When forwarding is enabled, its target must be an absolute HTTPS URL without embedded credentials.
 - Retryable `408`, `429`, and `5xx` responses use bounded backoff. A valid `Retry-After` is honored only within the five-second retry-delay budget; a larger delay fails closed for a later Gateway event or operator retry.
+- A timed-out request is not retried because remote completion is unknown. A later Gateway event or operator reconciliation can safely converge current member state without overlapping the original request.
 
 ## Release Boundary
 
