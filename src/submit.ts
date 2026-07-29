@@ -20,7 +20,7 @@ export function buildDiscordGalleryPayload(
   config: Pick<GalleryConfig, "discordGuildId" | "discordGalleryChannelId">,
 ): DiscordGalleryPayload {
   if (input.guildId !== config.discordGuildId) {
-    throw new ReaperError("wrong_guild", "Gallery submissions are only available inside the Mochirii Discord server.");
+    throw new ReaperError("wrong_guild", "Gallery submissions are only available inside the Mōchirīī Discord server.");
   }
 
   if (input.channelId !== config.discordGalleryChannelId) {

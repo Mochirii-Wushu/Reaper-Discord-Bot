@@ -53,6 +53,12 @@ describe("buildDiscordGalleryPayload", () => {
       buildDiscordGalleryPayload(input({ channelId: SYNTHETIC_DISCORD_IDS.otherChannel }), config),
     ).toThrow(ReaperError);
   });
+
+  test("uses the public Mōchirīī brand for wrong-guild guidance", () => {
+    expect(() =>
+      buildDiscordGalleryPayload(input({ guildId: SYNTHETIC_DISCORD_IDS.otherGuild }), config),
+    ).toThrow("Gallery submissions are only available inside the Mōchirīī Discord server.");
+  });
 });
 
 describe("formatSubmitResponse", () => {
