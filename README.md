@@ -109,8 +109,10 @@ The public Discord command contract is:
 - `DISCORD_GALLERY_CHANNEL_ID`
 - `SUPABASE_FUNCTIONS_URL`
 - `DISCORD_GALLERY_INGEST_SECRET`
+- `DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON` (one to three key IDs mapped to independent 32-128 byte secrets; Edge candidate only)
+- `DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID` (one configured key ID; Edge candidate only)
 
-The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and optional `WELCOME_DM_ENABLED`. Gallery command registration and the rollback `/submit` Gateway fallback still require the other values.
+The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and optional `WELCOME_DM_ENABLED`. Gallery command registration and the rollback `/submit` Gateway fallback still require the other values. The additive Edge candidate signs gallery ingest requests with the two HMAC variables and never accepts the fallback's former static-secret header.
 
 ## Validation
 

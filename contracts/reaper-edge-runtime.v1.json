@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "additive-candidate-not-deployed",
   "productionOwner": "Mochirii-Wushu/Mochirii-Website",
-  "sourceBaselineCommit": "2eec9e467b4679fd77648ef61e77cf246ec9589b",
+  "sourceBaselineCommit": "2d437ea5abee2d38aff0193a7d54f174f8721a03",
   "functions": [
     {
       "name": "reaper-discord-interactions",

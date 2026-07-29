@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "consumer-contract-only",
   "producerOwner": "Mochirii-Wushu/Mochirii-Website",
-  "producerBaselineCommit": "2eec9e467b4679fd77648ef61e77cf246ec9589b",
+  "producerBaselineCommit": "2d437ea5abee2d38aff0193a7d54f174f8721a03",
   "databaseTables": [
     "discord_managed_permission_overwrites",
     "discord_resources",
@@ -26,7 +26,13 @@
   "websiteFunctionConsumers": [
     {
       "name": "submit-discord-gallery-image",
-      "authenticationHeader": "x-mochirii-reaper-secret"
+      "authentication": "body-bound-hmac-sha256-v1",
+      "authenticationHeaders": [
+        "x-mochirii-gallery-key-id",
+        "x-mochirii-gallery-timestamp",
+        "x-mochirii-gallery-nonce",
+        "x-mochirii-gallery-signature"
+      ]
     }
   ],
   "websiteRouteConsumers": [

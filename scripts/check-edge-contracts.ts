@@ -25,7 +25,8 @@ type ConsumerContract = {
   databaseFunctions: string[];
   websiteFunctionConsumers: Array<{
     name: string;
-    authenticationHeader: string;
+    authentication: string;
+    authenticationHeaders: string[];
   }>;
   websiteRouteConsumers: Array<{
     path: string;
@@ -303,15 +304,57 @@ sameSet(
   consumer.databaseFunctions,
   "Website RPC consumers",
 );
+sameSet(
+  consumer.websiteFunctionConsumers.map(({ name }) => name),
+  ["submit-discord-gallery-image"],
+  "Website function consumers",
+);
+const expectedGalleryIngestHeaders = [
+  "x-mochirii-gallery-key-id",
+  "x-mochirii-gallery-timestamp",
+  "x-mochirii-gallery-nonce",
+  "x-mochirii-gallery-signature",
+] as const;
 for (
-  const { name, authenticationHeader } of consumer.websiteFunctionConsumers
+  const { name, authentication, authenticationHeaders } of consumer
+    .websiteFunctionConsumers
 ) {
+  sameSet(
+    authenticationHeaders,
+    expectedGalleryIngestHeaders,
+    `${name} authentication headers`,
+  );
   if (
     !runtimeSource.includes(`/functions/v1/${name}`) ||
-    !runtimeSource.includes(authenticationHeader)
+    authentication !== "body-bound-hmac-sha256-v1" ||
+    authenticationHeaders.some((header) => !runtimeSource.includes(header))
   ) {
     fail(`Website function consumer ${name} is not represented in source.`);
   }
+}
+const galleryIngestAuthSource = read(
+  "supabase/functions/_shared/discord-gallery-ingest-auth.ts",
+);
+for (
+  const required of [
+    "createDiscordGalleryIngestHeaders",
+    "DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON",
+    "DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID",
+    "HMAC",
+    "SHA-256",
+    "crypto.getRandomValues",
+  ]
+) {
+  if (!galleryIngestAuthSource.includes(required)) {
+    fail(`Gallery ingest signer is missing ${required}.`);
+  }
+}
+if (
+  /DISCORD_GALLERY_INGEST_SECRET|x-mochirii-reaper-secret/u.test(
+    runtimeSource,
+  )
+) {
+  fail("The Edge candidate must not retain the former gallery static secret.");
 }
 sameSet(
   consumer.websiteRouteConsumers.map(({ path }) => path),

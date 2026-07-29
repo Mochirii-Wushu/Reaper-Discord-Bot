@@ -25,6 +25,8 @@ All six functions use `verify_jwt=false` because they are Discord webhooks, cron
 - Discord Ed25519 request signatures;
 - bounded, constant-time shared-secret comparison;
 - scoped spinner media capabilities;
+- body-bound HMAC-SHA256 gallery ingest requests with a key ID, timestamp,
+  random nonce, exact request path, and exact body digest;
 - fail-closed runtime identity/origin validation;
 - no provider IDs, production endpoints, or secret values in candidate source.
 
@@ -33,6 +35,13 @@ Runtime configuration is environment-only. Missing or malformed identities retur
 The candidate intentionally removes the inherited `GUILD_SCHEDULE_URL` override. Event sync can read only the Website-owned `data/guild-schedule.json` route derived from the validated Website origin, matching the versioned consumer contract. This is a fail-closed hardening difference from the recorded Website baseline and must be included in any future behavior-parity review.
 
 The candidate also replaces the inherited unbounded pre-authentication Discord body read with a streaming 64 KiB ceiling. Invalid lengths, oversized bodies, stream failures, and invalid UTF-8 fail closed before signature verification or JSON routing. Signature verification operates on the exact bounded bytes. This is a second intentional hardening difference for future parity review.
+
+The current Website baseline replaces the former gallery static-secret header
+with a versioned HMAC-SHA256 request. Reaper's signer accepts a bounded set of
+one to three independent keys, selects one explicit active key, signs the exact
+JSON body, and emits only the four reviewed protocol headers. Unknown, weak,
+duplicate, or inactive key configuration fails closed. This source-only replay
+does not provision keys or activate the candidate.
 
 ## Validation
 

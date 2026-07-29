@@ -23,7 +23,9 @@ const syntheticEnvironment: Record<string, string> = {
   DISCORD_PUBLIC_KEY:
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   DISCORD_BOT_TOKEN: "synthetic-discord-token",
-  DISCORD_GALLERY_INGEST_SECRET: "synthetic-gallery-ingest-secret-value-01",
+  DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON:
+    '{"primary":"synthetic-gallery-ingest-hmac-secret-0001"}',
+  DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID: "primary",
   REAPER_PENDING_VERIFICATION_SYNC_SECRET:
     "synthetic-member-sync-secret-value-01",
   REAPER_SPINNER_DISPATCH_SECRET: "synthetic-spinner-dispatch-secret-value",
@@ -38,6 +40,7 @@ for (const [name, value] of Object.entries(syntheticEnvironment)) {
 }
 
 await import("./bounded-request-body_test.ts");
+await import("./discord-gallery-ingest-auth_test.ts");
 await import("./discord-interaction-helpers_test.ts");
 await import("./discord-signature_test.ts");
 await import("./modmail-audit_test.ts");
@@ -89,7 +92,6 @@ Deno.test("runtime profiles reject a Supabase URL with a path", () => {
 
 for (
   const [profile, secretName] of [
-    ["reaper-discord-interactions", "DISCORD_GALLERY_INGEST_SECRET"],
     [
       "reaper-discord-member-sync",
       "REAPER_PENDING_VERIFICATION_SYNC_SECRET",
@@ -141,6 +143,49 @@ for (
     }
   });
 }
+
+Deno.test("Discord gallery interaction runtime requires one valid active HMAC key", () => {
+  const originalKeys = Deno.env.get("DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON");
+  const originalActiveKey = Deno.env.get(
+    "DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID",
+  );
+  try {
+    const cases: Array<readonly [string, string, boolean]> = [
+      ['{"primary":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}', "primary", true],
+      ['{"primary":"short"}', "primary", false],
+      ['{"primary":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}', "missing", false],
+      ["not-json", "primary", false],
+      ["{}", "primary", false],
+    ];
+    for (const [keys, activeKey, expectedReady] of cases) {
+      Deno.env.set("DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON", keys);
+      Deno.env.set("DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID", activeKey);
+      if (
+        runtimeProfileReady("reaper-discord-interactions") !== expectedReady
+      ) {
+        throw new Error(
+          `reaper-discord-interactions should ${
+            expectedReady ? "accept" : "reject"
+          } the HMAC fixture.`,
+        );
+      }
+    }
+  } finally {
+    if (originalKeys === undefined) {
+      Deno.env.delete("DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON");
+    } else {
+      Deno.env.set("DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON", originalKeys);
+    }
+    if (originalActiveKey === undefined) {
+      Deno.env.delete("DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID");
+    } else {
+      Deno.env.set(
+        "DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID",
+        originalActiveKey,
+      );
+    }
+  }
+});
 
 Deno.test("runtime profiles accept opaque provider-issued credentials", () => {
   const originals = {

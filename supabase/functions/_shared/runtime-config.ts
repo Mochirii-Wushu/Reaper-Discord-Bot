@@ -2,6 +2,12 @@ import {
   MAX_SHARED_SECRET_BYTES,
   MIN_SHARED_SECRET_BYTES,
 } from "./secret-auth.ts";
+import {
+  DISCORD_GALLERY_INGEST_ACTIVE_KEY_ID_ENV,
+  DISCORD_GALLERY_INGEST_HMAC_KEYS_ENV,
+  discordGalleryIngestActiveKey,
+  parseDiscordGalleryIngestHmacKeys,
+} from "./discord-gallery-ingest-auth.ts";
 
 export type ReaperRuntimeProfile =
   | "reaper-discord-interactions"
@@ -145,6 +151,19 @@ function commonSupabaseReady(): boolean {
     (present("SUPABASE_SECRET_KEYS") || present("SUPABASE_SERVICE_ROLE_KEY"));
 }
 
+function galleryIngestHmacReady(): boolean {
+  const keys = parseDiscordGalleryIngestHmacKeys(
+    Deno.env.get(DISCORD_GALLERY_INGEST_HMAC_KEYS_ENV),
+  );
+  return Boolean(
+    keys &&
+      discordGalleryIngestActiveKey(
+        keys,
+        Deno.env.get(DISCORD_GALLERY_INGEST_ACTIVE_KEY_ID_ENV),
+      ),
+  );
+}
+
 export function runtimeProfileReady(profile: ReaperRuntimeProfile): boolean {
   if (!SITE_ORIGIN) return false;
 
@@ -165,7 +184,7 @@ export function runtimeProfileReady(profile: ReaperRuntimeProfile): boolean {
       validSnowflake("DISCORD_MODMAIL_MODERATOR_ROLE_ID") &&
       HEX_PUBLIC_KEY_PATTERN.test(env("DISCORD_PUBLIC_KEY")) &&
       present("DISCORD_BOT_TOKEN") &&
-      strongSharedSecret("DISCORD_GALLERY_INGEST_SECRET");
+      galleryIngestHmacReady();
   }
 
   if (profile === "reaper-discord-member-sync") {

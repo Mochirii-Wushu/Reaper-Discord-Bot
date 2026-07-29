@@ -45,6 +45,13 @@ import {
 } from "../_shared/discord-interaction-helpers.ts";
 import { readBoundedUtf8RequestBody } from "../_shared/bounded-request-body.ts";
 import { verifyDiscordSignature } from "../_shared/discord-signature.ts";
+import {
+  createDiscordGalleryIngestHeaders,
+  DISCORD_GALLERY_INGEST_ACTIVE_KEY_ID_ENV,
+  DISCORD_GALLERY_INGEST_HMAC_KEYS_ENV,
+  discordGalleryIngestActiveKey,
+  parseDiscordGalleryIngestHmacKeys,
+} from "../_shared/discord-gallery-ingest-auth.ts";
 import { SITE_ORIGIN, siteUrl } from "../_shared/public-origins.ts";
 import {
   DISCORD_GALLERY_CHANNEL_ID as EXPECTED_DISCORD_GALLERY_CHANNEL_ID,
@@ -557,14 +564,22 @@ async function processSubmission(
   applicationId: string,
 ): Promise<void> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const ingestSecret = Deno.env.get("DISCORD_GALLERY_INGEST_SECRET") || "";
+  const ingestKeys = parseDiscordGalleryIngestHmacKeys(
+    Deno.env.get(DISCORD_GALLERY_INGEST_HMAC_KEYS_ENV),
+  );
+  const activeKeyId = Deno.env.get(DISCORD_GALLERY_INGEST_ACTIVE_KEY_ID_ENV) ||
+    "";
+  const activeKey = ingestKeys
+    ? discordGalleryIngestActiveKey(ingestKeys, activeKeyId)
+    : null;
 
-  if (!supabaseUrl || !ingestSecret) {
+  if (!supabaseUrl || !ingestKeys || !activeKey) {
     console.error(
       "reaper-discord-interactions missing submit-discord-gallery-image configuration",
       {
         hasSupabaseUrl: Boolean(supabaseUrl),
-        hasIngestSecret: Boolean(ingestSecret),
+        hasIngestHmacKeys: Boolean(ingestKeys),
+        hasActiveIngestHmacKey: Boolean(activeKey),
       },
     );
     await editOriginalInteractionResponse(
@@ -576,13 +591,19 @@ async function processSubmission(
   }
 
   try {
+    const rawBody = JSON.stringify(payload);
+    const authHeaders = await createDiscordGalleryIngestHeaders({
+      keys: ingestKeys,
+      activeKeyId: activeKey.keyId,
+      rawBody,
+    });
     const response = await fetch(sourceEndpoint(supabaseUrl), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-mochirii-reaper-secret": ingestSecret,
+        ...authHeaders,
       },
-      body: JSON.stringify(payload),
+      body: rawBody,
     });
     const body = asRecord(await response.json().catch(() => ({})));
 
