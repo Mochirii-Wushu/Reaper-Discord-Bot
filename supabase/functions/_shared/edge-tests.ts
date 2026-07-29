@@ -52,6 +52,9 @@ await import("./supabase-service-role_test.ts");
 await import("./vote-reminders_test.ts");
 
 const { runtimeProfileReady } = await import("./runtime-config.ts");
+const { MAX_SHARED_SECRET_BYTES, MIN_SHARED_SECRET_BYTES } = await import(
+  "./secret-auth.ts"
+);
 for (
   const profile of [
     "reaper-discord-interactions",
@@ -97,17 +100,40 @@ for (
     ["publish-member-spotlight-winner", "SPOTLIGHT_POLL_CRON_SECRET"],
   ] as const
 ) {
-  Deno.test(`${profile} rejects a weak shared secret`, () => {
+  Deno.test(`${profile} enforces the shared-secret byte contract`, () => {
     const original = Deno.env.get(secretName);
     try {
-      Deno.env.set(secretName, "too-short");
-      if (runtimeProfileReady(profile)) {
-        throw new Error(`${profile} must fail closed for a weak secret.`);
-      }
+      const cases: Array<readonly [string, boolean, string]> = [
+        ["a".repeat(MIN_SHARED_SECRET_BYTES - 1), false, "31 bytes"],
+        ["a".repeat(MIN_SHARED_SECRET_BYTES), true, "32 bytes"],
+        ["a".repeat(MAX_SHARED_SECRET_BYTES), true, "512 bytes"],
+        ["a".repeat(MAX_SHARED_SECRET_BYTES + 1), false, "513 bytes"],
+        [` ${"a".repeat(MIN_SHARED_SECRET_BYTES)}`, false, "leading space"],
+        [`${"a".repeat(MIN_SHARED_SECRET_BYTES)} `, false, "trailing space"],
+        [`${"a".repeat(16)} ${"b".repeat(16)}`, false, "internal space"],
+        [`${"a".repeat(MIN_SHARED_SECRET_BYTES)}\t`, false, "tab"],
+        [`${"a".repeat(MIN_SHARED_SECRET_BYTES)}\n`, false, "newline"],
+        [`${"a".repeat(MIN_SHARED_SECRET_BYTES)}\u0000`, false, "NUL"],
+        [`${"a".repeat(MIN_SHARED_SECRET_BYTES)}\u007f`, false, "DEL"],
+        ["é".repeat(MIN_SHARED_SECRET_BYTES), false, "non-ASCII"],
+      ];
 
-      Deno.env.set(secretName, `${"a".repeat(31)} `);
-      if (runtimeProfileReady(profile)) {
-        throw new Error(`${profile} must reject whitespace-padded secrets.`);
+      for (const [value, expectedReady, description] of cases) {
+        try {
+          Deno.env.set(secretName, value);
+        } catch {
+          if (!expectedReady) continue;
+          throw new Error(
+            `${profile} could not configure the accepted ${description} case.`,
+          );
+        }
+        if (runtimeProfileReady(profile) !== expectedReady) {
+          throw new Error(
+            `${profile} should ${
+              expectedReady ? "accept" : "reject"
+            } ${description}.`,
+          );
+        }
       }
     } finally {
       if (original === undefined) Deno.env.delete(secretName);
@@ -115,3 +141,38 @@ for (
     }
   });
 }
+
+Deno.test("runtime profiles accept opaque provider-issued credentials", () => {
+  const originals = {
+    botToken: Deno.env.get("DISCORD_BOT_TOKEN"),
+    serviceRole: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+  };
+  try {
+    Deno.env.set("DISCORD_BOT_TOKEN", "x");
+    Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "y");
+    for (
+      const profile of [
+        "reaper-discord-interactions",
+        "reaper-discord-member-sync",
+        "reaper-spinner-dispatch",
+        "send-vote-reminder",
+        "send-member-spotlight-poll",
+        "publish-member-spotlight-winner",
+      ] as const
+    ) {
+      if (!runtimeProfileReady(profile)) {
+        throw new Error(
+          `${profile} must treat nonempty provider credentials as opaque.`,
+        );
+      }
+    }
+  } finally {
+    if (originals.botToken === undefined) Deno.env.delete("DISCORD_BOT_TOKEN");
+    else Deno.env.set("DISCORD_BOT_TOKEN", originals.botToken);
+    if (originals.serviceRole === undefined) {
+      Deno.env.delete("SUPABASE_SERVICE_ROLE_KEY");
+    } else {
+      Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", originals.serviceRole);
+    }
+  }
+});

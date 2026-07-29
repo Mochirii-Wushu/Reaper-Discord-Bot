@@ -4,6 +4,7 @@ import {
   asRecord,
   attachmentOption,
   booleanOption,
+  editOriginalInteractionPayload,
   interactionMessage,
   normalizedMime,
   safeString,
@@ -100,6 +101,42 @@ Deno.test("Discord interaction helpers normalize safe records and messages", () 
   assert(
     successMessage(false, true).includes("already in the moderation queue"),
     "duplicate message should mention existing queue item",
+  );
+});
+
+Deno.test("Discord interaction transport failures redact webhook credentials", async () => {
+  const interactionToken = "synthetic-interaction-token-that-must-not-leak";
+  const rawTransportMessage = "synthetic transport detail that must not leak";
+  const rejectingFetch = ((input: RequestInfo | URL) =>
+    Promise.reject(
+      new Error(`${rawTransportMessage}: ${String(input)}`),
+    )) as typeof fetch;
+
+  let thrown: unknown;
+  try {
+    await editOriginalInteractionPayload(
+      "900000000000000013",
+      interactionToken,
+      { content: "Synthetic response" },
+      rejectingFetch,
+    );
+  } catch (error) {
+    thrown = error;
+  }
+
+  assert(thrown instanceof Error, "transport rejection should remain an error");
+  assert(
+    thrown.message === "Discord interaction response transport failed.",
+    "transport rejection should expose only the fixed safe message",
+  );
+  assert(
+    !thrown.message.includes(interactionToken) &&
+      !thrown.message.includes(rawTransportMessage),
+    "transport rejection must not expose the webhook token or raw error",
+  );
+  assert(
+    !("cause" in thrown) || thrown.cause === undefined,
+    "transport rejection must not retain a credential-bearing cause",
   );
 });
 

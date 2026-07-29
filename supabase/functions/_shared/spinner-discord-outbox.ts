@@ -1,5 +1,6 @@
 import type { DiscordFetchResult, JsonRecord } from "./discord-api.ts";
 import { DISCORD_RAFFLE_CHANNEL_ID as SPINNER_DISCORD_CHANNEL_ID } from "./runtime-config.ts";
+import { MAX_SHARED_SECRET_BYTES } from "./secret-auth.ts";
 import { SPINNER_DISCORD_CHANNEL_KEY } from "./spinner-consumer-contract.ts";
 
 export type SpinnerOutboxRow = {
@@ -31,7 +32,6 @@ export type SpinnerOutboxDependencies = {
 
 const SNOWFLAKE_PATTERN = /^\d{16,22}$/;
 export const SPINNER_DISPATCH_MAX_BODY_BYTES = 1_024;
-const SPINNER_DISPATCH_MAX_CREDENTIAL_BYTES = 1_024;
 
 function asRecord(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -193,8 +193,8 @@ export async function constantTimeSecretEqual(
   if (
     providedBytes.length === 0 ||
     expectedBytes.length === 0 ||
-    providedBytes.length > SPINNER_DISPATCH_MAX_CREDENTIAL_BYTES ||
-    expectedBytes.length > SPINNER_DISPATCH_MAX_CREDENTIAL_BYTES
+    providedBytes.length > MAX_SHARED_SECRET_BYTES ||
+    expectedBytes.length > MAX_SHARED_SECRET_BYTES
   ) {
     return false;
   }

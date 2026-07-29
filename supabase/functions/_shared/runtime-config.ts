@@ -1,3 +1,8 @@
+import {
+  MAX_SHARED_SECRET_BYTES,
+  MIN_SHARED_SECRET_BYTES,
+} from "./secret-auth.ts";
+
 export type ReaperRuntimeProfile =
   | "reaper-discord-interactions"
   | "reaper-discord-member-sync"
@@ -118,10 +123,13 @@ function present(name: string): boolean {
   return env(name).length > 0;
 }
 
+const encoder = new TextEncoder();
+
 function strongSharedSecret(name: string): boolean {
-  const value = env(name);
-  return value.length >= 32 && value.length <= 4096 &&
-    !/[\u0000-\u0020\u007f]/u.test(value);
+  const value = Deno.env.get(name) || "";
+  const byteLength = encoder.encode(value).byteLength;
+  return byteLength >= MIN_SHARED_SECRET_BYTES &&
+    byteLength <= MAX_SHARED_SECRET_BYTES && /^[\x21-\x7e]+$/u.test(value);
 }
 
 function validSnowflake(name: string): boolean {

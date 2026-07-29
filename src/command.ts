@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from "discord.js";
 
 export const submitCommand = new SlashCommandBuilder()
   .setName("submit")
-  .setDescription("Submit an image to the Mochirii gallery moderation queue.")
+  .setDescription("Submit an image to the Mōchirīī gallery moderation queue.")
   .addAttachmentOption((option) =>
     option
       .setName("image")
@@ -26,7 +26,7 @@ export const submitCommand = new SlashCommandBuilder()
   .addBooleanOption((option) =>
     option
       .setName("share_to_instagram")
-      .setDescription("Allow Mochirii to share this image on our official Instagram if approved.")
+      .setDescription("Allow Mōchirīī to share this image on our official Instagram if approved.")
       .setRequired(false),
   );
 

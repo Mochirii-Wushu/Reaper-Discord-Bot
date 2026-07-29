@@ -1,4 +1,5 @@
-const MAX_SECRET_BYTES = 1_024;
+export const MIN_SHARED_SECRET_BYTES = 32;
+export const MAX_SHARED_SECRET_BYTES = 512;
 const encoder = new TextEncoder();
 
 export function constantTimeSecretEqual(
@@ -9,8 +10,8 @@ export function constantTimeSecretEqual(
   const expectedBytes = encoder.encode(expected);
   if (
     providedBytes.length === 0 || expectedBytes.length === 0 ||
-    providedBytes.length > MAX_SECRET_BYTES ||
-    expectedBytes.length > MAX_SECRET_BYTES
+    providedBytes.length > MAX_SHARED_SECRET_BYTES ||
+    expectedBytes.length > MAX_SHARED_SECRET_BYTES
   ) return false;
 
   let mismatch = providedBytes.length ^ expectedBytes.length;

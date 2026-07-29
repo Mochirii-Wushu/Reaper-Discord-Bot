@@ -51,13 +51,11 @@ async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return privateJson({ ok: true });
   if (req.method !== "POST") return opaqueDenied();
 
-  const dispatchSecret =
-    Deno.env.get("REAPER_SPINNER_DISPATCH_SECRET")?.trim() || "";
+  const dispatchSecret = Deno.env.get("REAPER_SPINNER_DISPATCH_SECRET") || "";
   const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() || "";
   const serviceRoleKey = getServiceRoleKey();
   if (
-    dispatchSecret.length < 32 || dispatchSecret.length > 512 ||
-    !supabaseUrl || !serviceRoleKey
+    !dispatchSecret || !supabaseUrl || !serviceRoleKey
   ) return opaqueDenied();
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {

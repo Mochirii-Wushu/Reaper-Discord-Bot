@@ -86,16 +86,22 @@ export async function editOriginalInteractionPayload(
   applicationId: string,
   interactionToken: string,
   payload: JsonRecord,
+  fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
   const endpoint =
     `${DISCORD_API_BASE_URL}/webhooks/${applicationId}/${interactionToken}/messages/@original`;
-  const response = await fetch(endpoint, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  let response: Response;
+  try {
+    response = await fetchImpl(endpoint, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error("Discord interaction response transport failed.");
+  }
 
   if (!response.ok) {
     console.error("reaper-discord-interactions original response edit failed", {
