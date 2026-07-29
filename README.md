@@ -2,13 +2,28 @@
 
 Private Reaper command and contract helper for Mōchirīī gallery submissions and Gateway-only member welcome DMs.
 
-Production gallery submissions now use the Supabase-hosted Discord Interactions webhook in the Mochirii website repo:
+Production gallery submissions currently use the Supabase-hosted Discord Interactions webhook owned by the Website repository:
 
 ```text
-https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-interactions
+${SUPABASE_FUNCTIONS_URL}/reaper-discord-interactions
 ```
 
 This repository remains useful for guild command registration, contract tests, a rollback Gallery Gateway runtime reference, and the separate welcome-DM Gateway worker. Do not move slash-command production handling away from Supabase unless a later approved plan changes that architecture.
+
+## Additive Edge Function Ownership Candidate
+
+`supabase/` is a local, CI-only ownership candidate for these six bot execution functions:
+
+- `reaper-discord-interactions`
+- `reaper-discord-member-sync`
+- `reaper-spinner-dispatch`
+- `send-vote-reminder`
+- `send-member-spotlight-poll`
+- `publish-member-spotlight-winner`
+
+It is not deployed and does not transfer production ownership. The Website repository remains the production source for the functions, migrations, schema, row-level security, schedules, Website producers, and generic project configuration. `contracts/reaper-edge-runtime.v1.json` is the canonical six-function and nine-command manifest; `contracts/website-supabase-consumer.v1.json` records the versioned database and Website-function consumer boundary.
+
+The candidate contains no deployment workflow or provider values. Runtime identities, origins, and secrets must be supplied by an independently reviewed activation packet and fail closed when missing or malformed.
 
 ## Welcome DM Gateway Worker
 
@@ -43,7 +58,7 @@ REAPER_PENDING_VERIFICATION_SYNC_ENABLED=false
 When approved and enabled, the Gateway worker posts `guildMemberAdd` and role-changing `guildMemberUpdate` events to the Mochirii Supabase Edge Function:
 
 ```text
-https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-member-sync
+${REAPER_PENDING_VERIFICATION_SYNC_URL}
 ```
 
 The worker uses only `Guilds` and `GuildMembers` intents. It does not mutate Discord roles or channel permission overwrites directly and does not store Supabase service-role keys. The Edge Function owns the current-member fetch, conflict checks, max-mutation guard, tracked `VIEW_CHANNEL` overwrite writes, and redacted `discord_sync_log` entries. Retries reuse one byte-identical desired-state payload; the Edge Function re-fetches current member state before calculating changes, so a repeated delivery converges without duplicating an already-applied overwrite.
@@ -103,13 +118,17 @@ The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and op
 bun run typecheck
 bun test
 bun run build
+bun run edge:contracts
+bun run edge:fmt
+bun run edge:check
+bun run edge:test
 ```
 
 ## Production Runtime
 
 - Primary slash-command runtime: Supabase Edge Function `reaper-discord-interactions`.
 - Welcome DM runtime: persistent Gateway worker from this repo.
-- Discord Developer Portal Interactions Endpoint URL: `https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-interactions`.
+- Discord Developer Portal Interactions Endpoint URL remains provider-managed and is not recorded in this repository.
 - Register guild commands before endpoint verification checks.
 - Keep Discord, Supabase, and Instagram secrets in Supabase secrets or local ignored files only.
 - Pending-verification forwarding uses bounded Edge Function attempts and per-attempt timeouts. Logs stay redacted and record only status labels, short snowflake suffixes, counts, and attempt numbers.
@@ -122,6 +141,7 @@ bun run build
 - This source change does not enable pending-verification forwarding, deploy Reaper, change Discord or Supabase configuration, or send a Discord message.
 - Local and pull-request validation uses synthetic fixtures with no provider network calls. Green source tests do not prove that a production Gateway worker is running this revision.
 - Enabling the forwarder, publishing a runtime image, or changing a live worker requires a separately reviewed deployment packet with exact source, configuration, rollback, and live readback evidence.
+- The additive Edge Function candidate is also non-deployable from this repository. Moving production ownership requires a separate decision record, exact provider packet, Website compatibility window, and rollback/readback evidence.
 
 ## Deployment Guardrails
 

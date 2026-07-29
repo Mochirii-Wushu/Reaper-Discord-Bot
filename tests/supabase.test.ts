@@ -31,7 +31,7 @@ describe("submitDiscordGalleryImage", () => {
 
     const response = await submitDiscordGalleryImage(
       {
-        supabaseFunctionsUrl: "https://deyvmtncimmcinldjyqe.supabase.co/functions/v1",
+        supabaseFunctionsUrl: "https://functions.example",
         discordGalleryIngestSecret: "local-test-secret",
       },
       payload,
@@ -40,7 +40,7 @@ describe("submitDiscordGalleryImage", () => {
 
     expect(response.ok).toBe(true);
     const request = requests[0];
-    expect(request?.url).toBe("https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/submit-discord-gallery-image");
+    expect(request?.url).toBe("https://functions.example/submit-discord-gallery-image");
     expect(request?.headers.get("x-mochirii-reaper-secret")).toBe("local-test-secret");
     expect(await request?.json()).toEqual(payload);
   });

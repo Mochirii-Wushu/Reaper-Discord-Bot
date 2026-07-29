@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "status": "consumer-contract-only",
+  "producerOwner": "Mochirii-Wushu/Mochirii-Website",
+  "producerBaselineCommit": "2eec9e467b4679fd77648ef61e77cf246ec9589b",
+  "databaseTables": [
+    "discord_managed_permission_overwrites",
+    "discord_resources",
+    "discord_sync_log",
+    "member_profiles",
+    "spotlight_poll_candidates",
+    "spotlight_poll_cycles",
+    "spotlight_poll_results",
+    "vote_confirmations",
+    "vote_reminder_sends"
+  ],
+  "databaseFunctions": [
+    "spinner_authorize_media_manifest",
+    "spinner_bind_media_capability",
+    "spinner_claim_discord_outbox",
+    "spinner_claim_media_jobs",
+    "spinner_finish_discord_outbox_claim",
+    "spinner_finish_media_attachment",
+    "spinner_reserve_media_attachment"
+  ],
+  "websiteFunctionConsumers": [
+    {
+      "name": "submit-discord-gallery-image",
+      "authenticationHeader": "x-mochirii-reaper-secret"
+    }
+  ],
+  "websiteRouteConsumers": [
+    {
+      "path": "data/guild-schedule.json",
+      "purpose": "discord-event-schedule"
+    },
+    {
+      "path": "spinner/media/render",
+      "purpose": "spinner-media-render"
+    }
+  ],
+  "retainedByProducer": [
+    "migrations",
+    "database-schema",
+    "row-level-security",
+    "schedules",
+    "website-producers",
+    "generic-project-config"
+  ]
+}

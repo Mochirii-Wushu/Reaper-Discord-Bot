@@ -1,0 +1,29 @@
+[functions.reaper-discord-interactions]
+verify_jwt = false
+import_map = "./functions/reaper-discord-interactions/deno.json"
+entrypoint = "./functions/reaper-discord-interactions/index.ts"
+
+[functions.reaper-discord-member-sync]
+verify_jwt = false
+import_map = "./functions/reaper-discord-member-sync/deno.json"
+entrypoint = "./functions/reaper-discord-member-sync/index.ts"
+
+[functions.reaper-spinner-dispatch]
+verify_jwt = false
+import_map = "./functions/reaper-spinner-dispatch/deno.json"
+entrypoint = "./functions/reaper-spinner-dispatch/index.ts"
+
+[functions.send-vote-reminder]
+verify_jwt = false
+import_map = "./functions/send-vote-reminder/deno.json"
+entrypoint = "./functions/send-vote-reminder/index.ts"
+
+[functions.send-member-spotlight-poll]
+verify_jwt = false
+import_map = "./functions/send-member-spotlight-poll/deno.json"
+entrypoint = "./functions/send-member-spotlight-poll/index.ts"
+
+[functions.publish-member-spotlight-winner]
+verify_jwt = false
+import_map = "./functions/publish-member-spotlight-winner/deno.json"
+entrypoint = "./functions/publish-member-spotlight-winner/index.ts"

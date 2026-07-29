@@ -1,0 +1,84 @@
+const syntheticEnvironment: Record<string, string> = {
+  MOCHIRII_SITE_ORIGIN: "https://guild.example",
+  MOCHIRII_CORS_ORIGINS: "https://guild.example",
+  SUPABASE_URL: "https://database.example",
+  SUPABASE_SERVICE_ROLE_KEY: "synthetic-service-role-value",
+  DISCORD_GUILD_ID: "900000000000000004",
+  DISCORD_APPLICATION_ID: "900000000000000013",
+  DISCORD_GALLERY_CHANNEL_ID: "900000000000000005",
+  DISCORD_VOTE_CHANNEL_ID: "900000000000000008",
+  DISCORD_PHOTO_DAY_CHANNEL_ID: "900000000000000011",
+  DISCORD_SPOTLIGHT_POLL_CHANNEL_ID: "900000000000000014",
+  DISCORD_RAFFLE_CHANNEL_ID: "900000000000000011",
+  DISCORD_REQUIRED_ROLE_IDS: "900000000000000006,900000000000000007",
+  DISCORD_MODERATOR_ROLE_IDS: "900000000000000002",
+  DISCORD_PENDING_BASE_ROLE_ID: "900000000000000006",
+  DISCORD_VERIFIED_ROLE_ID: "900000000000000007",
+  DISCORD_PENDING_ALLOWED_CHANNEL_IDS: "900000000000000009,900000000000000010",
+  DISCORD_MODMAIL_BOT_USER_ID: "900000000000000001",
+  DISCORD_MODMAIL_LOG_CHANNEL_ID: "900000000000000003",
+  DISCORD_MODMAIL_MODERATOR_ROLE_ID: "900000000000000002",
+  DISCORD_SPOTLIGHT_EXCLUDED_MEMBER_IDS: "900000000000000012",
+  SPOTLIGHT_EXCLUDED_MEMBER_PROFILE_IDS: "00000000-0000-4000-8000-999999999999",
+  DISCORD_PUBLIC_KEY:
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  DISCORD_BOT_TOKEN: "synthetic-discord-token",
+  DISCORD_GALLERY_INGEST_SECRET: "synthetic-gallery-ingest-secret",
+  REAPER_PENDING_VERIFICATION_SYNC_SECRET: "synthetic-member-sync-secret",
+  REAPER_SPINNER_DISPATCH_SECRET: "synthetic-spinner-dispatch-secret-value",
+  DISCORD_VOTE_LINKS_JSON: '[{"label":"Vote","url":"https://vote.example"}]',
+  VOTE_REMINDER_CRON_SECRET: "synthetic-vote-cron-secret",
+  VOTE_REMINDER_TIME_ZONE: "UTC",
+  SPOTLIGHT_POLL_CRON_SECRET: "synthetic-spotlight-cron-secret",
+};
+
+for (const [name, value] of Object.entries(syntheticEnvironment)) {
+  Deno.env.set(name, value);
+}
+
+await import("./bounded-request-body_test.ts");
+await import("./discord-interaction-helpers_test.ts");
+await import("./discord-signature_test.ts");
+await import("./modmail-audit_test.ts");
+await import("./pending-verification-containment_test.ts");
+await import("./photo-day-polls_test.ts");
+await import("./reaper-discord-events_test.ts");
+await import("./secret-auth_test.ts");
+await import("./spinner-consumer-contract_test.ts");
+await import("./spinner-media_test.ts");
+await import("./spotlight-polls_test.ts");
+await import("./supabase-service-role_test.ts");
+await import("./vote-reminders_test.ts");
+
+const { runtimeProfileReady } = await import("./runtime-config.ts");
+for (
+  const profile of [
+    "reaper-discord-interactions",
+    "reaper-discord-member-sync",
+    "reaper-spinner-dispatch",
+    "send-vote-reminder",
+    "send-member-spotlight-poll",
+    "publish-member-spotlight-winner",
+  ] as const
+) {
+  Deno.test(`${profile} synthetic runtime contract is complete`, () => {
+    if (!runtimeProfileReady(profile)) {
+      throw new Error(
+        `${profile} should accept the complete synthetic contract.`,
+      );
+    }
+  });
+}
+
+Deno.test("runtime profiles reject a Supabase URL with a path", () => {
+  const original = Deno.env.get("SUPABASE_URL");
+  try {
+    Deno.env.set("SUPABASE_URL", "https://database.example/not-an-origin");
+    if (runtimeProfileReady("send-vote-reminder")) {
+      throw new Error("A path-bearing Supabase URL must fail closed.");
+    }
+  } finally {
+    if (original === undefined) Deno.env.delete("SUPABASE_URL");
+    else Deno.env.set("SUPABASE_URL", original);
+  }
+});

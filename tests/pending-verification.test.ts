@@ -12,7 +12,7 @@ const baseConfig: ReaperConfig = {
   discordGuildId: SYNTHETIC_DISCORD_IDS.guild,
   welcomeDmEnabled: true,
   pendingVerificationSyncEnabled: true,
-  pendingVerificationSyncUrl: "https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-member-sync",
+  pendingVerificationSyncUrl: "https://functions.example/reaper-discord-member-sync",
   pendingVerificationSyncSecret: "local-sync-secret",
   pendingVerificationSyncTimeoutMs: 5000,
   pendingVerificationSyncMaxAttempts: 2,

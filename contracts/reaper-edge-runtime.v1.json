@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "status": "additive-candidate-not-deployed",
+  "productionOwner": "Mochirii-Wushu/Mochirii-Website",
+  "sourceBaselineCommit": "2eec9e467b4679fd77648ef61e77cf246ec9589b",
+  "functions": [
+    {
+      "name": "reaper-discord-interactions",
+      "verifyJwt": false,
+      "authentication": "discord-ed25519-signature"
+    },
+    {
+      "name": "reaper-discord-member-sync",
+      "verifyJwt": false,
+      "authentication": "constant-time-shared-secret"
+    },
+    {
+      "name": "reaper-spinner-dispatch",
+      "verifyJwt": false,
+      "authentication": "constant-time-shared-secret-or-scoped-media-capability"
+    },
+    {
+      "name": "send-vote-reminder",
+      "verifyJwt": false,
+      "authentication": "constant-time-cron-secret"
+    },
+    {
+      "name": "send-member-spotlight-poll",
+      "verifyJwt": false,
+      "authentication": "constant-time-cron-secret"
+    },
+    {
+      "name": "publish-member-spotlight-winner",
+      "verifyJwt": false,
+      "authentication": "constant-time-cron-secret"
+    }
+  ],
+  "discordCommands": [
+    "submit",
+    "sync-ranks",
+    "sync-events",
+    "sync-pending-verification",
+    "audit-modmail",
+    "vote-status",
+    "vote-leaderboard",
+    "vote-reminder-preview",
+    "photo-day-poll"
+  ],
+  "activationBoundary": {
+    "deployableFromThisBranch": false,
+    "providerConfigurationIncluded": false,
+    "schemaOrScheduleOwnershipTransferred": false
+  }
+}
