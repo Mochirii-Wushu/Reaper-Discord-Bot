@@ -812,7 +812,7 @@ Deno.serve(async (req: Request) => {
 
     if (guildId !== EXPECTED_DISCORD_GUILD_ID || !discordUserId) {
       return interactionMessage(
-        "Use this command in the Mochirii Discord server.",
+        "Use this command in the Mōchirīī Discord server.",
       );
     }
 
@@ -838,7 +838,7 @@ Deno.serve(async (req: Request) => {
 
     if (guildId !== EXPECTED_DISCORD_GUILD_ID) {
       return interactionMessage(
-        "Use this command in the Mochirii Discord server.",
+        "Use this command in the Mōchirīī Discord server.",
       );
     }
 
@@ -915,7 +915,7 @@ Deno.serve(async (req: Request) => {
 
     if (guildId !== EXPECTED_DISCORD_GUILD_ID) {
       return interactionMessage(
-        "Use this command in the Mochirii Discord server.",
+        "Use this command in the Mōchirīī Discord server.",
       );
     }
 
@@ -957,7 +957,7 @@ Deno.serve(async (req: Request) => {
 
     if (guildId !== EXPECTED_DISCORD_GUILD_ID) {
       return interactionMessage(
-        "Use this command in the Mochirii Discord server.",
+        "Use this command in the Mōchirīī Discord server.",
       );
     }
 

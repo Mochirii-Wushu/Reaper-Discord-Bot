@@ -23,13 +23,14 @@ const syntheticEnvironment: Record<string, string> = {
   DISCORD_PUBLIC_KEY:
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   DISCORD_BOT_TOKEN: "synthetic-discord-token",
-  DISCORD_GALLERY_INGEST_SECRET: "synthetic-gallery-ingest-secret",
-  REAPER_PENDING_VERIFICATION_SYNC_SECRET: "synthetic-member-sync-secret",
+  DISCORD_GALLERY_INGEST_SECRET: "synthetic-gallery-ingest-secret-value-01",
+  REAPER_PENDING_VERIFICATION_SYNC_SECRET:
+    "synthetic-member-sync-secret-value-01",
   REAPER_SPINNER_DISPATCH_SECRET: "synthetic-spinner-dispatch-secret-value",
   DISCORD_VOTE_LINKS_JSON: '[{"label":"Vote","url":"https://vote.example"}]',
-  VOTE_REMINDER_CRON_SECRET: "synthetic-vote-cron-secret",
+  VOTE_REMINDER_CRON_SECRET: "synthetic-vote-cron-secret-value-01",
   VOTE_REMINDER_TIME_ZONE: "UTC",
-  SPOTLIGHT_POLL_CRON_SECRET: "synthetic-spotlight-cron-secret",
+  SPOTLIGHT_POLL_CRON_SECRET: "synthetic-spotlight-cron-secret-value-01",
 };
 
 for (const [name, value] of Object.entries(syntheticEnvironment)) {
@@ -82,3 +83,35 @@ Deno.test("runtime profiles reject a Supabase URL with a path", () => {
     else Deno.env.set("SUPABASE_URL", original);
   }
 });
+
+for (
+  const [profile, secretName] of [
+    ["reaper-discord-interactions", "DISCORD_GALLERY_INGEST_SECRET"],
+    [
+      "reaper-discord-member-sync",
+      "REAPER_PENDING_VERIFICATION_SYNC_SECRET",
+    ],
+    ["reaper-spinner-dispatch", "REAPER_SPINNER_DISPATCH_SECRET"],
+    ["send-vote-reminder", "VOTE_REMINDER_CRON_SECRET"],
+    ["send-member-spotlight-poll", "SPOTLIGHT_POLL_CRON_SECRET"],
+    ["publish-member-spotlight-winner", "SPOTLIGHT_POLL_CRON_SECRET"],
+  ] as const
+) {
+  Deno.test(`${profile} rejects a weak shared secret`, () => {
+    const original = Deno.env.get(secretName);
+    try {
+      Deno.env.set(secretName, "too-short");
+      if (runtimeProfileReady(profile)) {
+        throw new Error(`${profile} must fail closed for a weak secret.`);
+      }
+
+      Deno.env.set(secretName, `${"a".repeat(31)} `);
+      if (runtimeProfileReady(profile)) {
+        throw new Error(`${profile} must reject whitespace-padded secrets.`);
+      }
+    } finally {
+      if (original === undefined) Deno.env.delete(secretName);
+      else Deno.env.set(secretName, original);
+    }
+  });
+}

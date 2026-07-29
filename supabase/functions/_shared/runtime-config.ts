@@ -118,6 +118,12 @@ function present(name: string): boolean {
   return env(name).length > 0;
 }
 
+function strongSharedSecret(name: string): boolean {
+  const value = env(name);
+  return value.length >= 32 && value.length <= 4096 &&
+    !/[\u0000-\u0020\u007f]/u.test(value);
+}
+
 function validSnowflake(name: string): boolean {
   return snowflake(name).length > 0;
 }
@@ -151,7 +157,7 @@ export function runtimeProfileReady(profile: ReaperRuntimeProfile): boolean {
       validSnowflake("DISCORD_MODMAIL_MODERATOR_ROLE_ID") &&
       HEX_PUBLIC_KEY_PATTERN.test(env("DISCORD_PUBLIC_KEY")) &&
       present("DISCORD_BOT_TOKEN") &&
-      present("DISCORD_GALLERY_INGEST_SECRET");
+      strongSharedSecret("DISCORD_GALLERY_INGEST_SECRET");
   }
 
   if (profile === "reaper-discord-member-sync") {
@@ -162,14 +168,14 @@ export function runtimeProfileReady(profile: ReaperRuntimeProfile): boolean {
       validSnowflakes("DISCORD_PENDING_ALLOWED_CHANNEL_IDS") &&
       validSnowflakes("DISCORD_MODERATOR_ROLE_IDS") &&
       present("DISCORD_BOT_TOKEN") &&
-      present("REAPER_PENDING_VERIFICATION_SYNC_SECRET");
+      strongSharedSecret("REAPER_PENDING_VERIFICATION_SYNC_SECRET");
   }
 
   if (profile === "reaper-spinner-dispatch") {
     return commonSupabaseReady() &&
       validSnowflake("DISCORD_RAFFLE_CHANNEL_ID") &&
       present("DISCORD_BOT_TOKEN") &&
-      present("REAPER_SPINNER_DISPATCH_SECRET");
+      strongSharedSecret("REAPER_SPINNER_DISPATCH_SECRET");
   }
 
   if (profile === "send-vote-reminder") {
@@ -178,7 +184,7 @@ export function runtimeProfileReady(profile: ReaperRuntimeProfile): boolean {
       validSnowflake("DISCORD_VOTE_CHANNEL_ID") &&
       present("DISCORD_BOT_TOKEN") &&
       present("DISCORD_VOTE_LINKS_JSON") &&
-      present("VOTE_REMINDER_CRON_SECRET") &&
+      strongSharedSecret("VOTE_REMINDER_CRON_SECRET") &&
       present("VOTE_REMINDER_TIME_ZONE");
   }
 
@@ -190,7 +196,7 @@ export function runtimeProfileReady(profile: ReaperRuntimeProfile): boolean {
       validSnowflake("DISCORD_GUILD_ID") &&
       validSnowflake("DISCORD_SPOTLIGHT_POLL_CHANNEL_ID") &&
       present("DISCORD_BOT_TOKEN") &&
-      present("SPOTLIGHT_POLL_CRON_SECRET");
+      strongSharedSecret("SPOTLIGHT_POLL_CRON_SECRET");
   }
 
   return false;
