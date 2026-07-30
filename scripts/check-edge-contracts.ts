@@ -7,6 +7,7 @@ type RuntimeManifest = {
   status: string;
   productionOwner: string;
   sourceBaselineCommit: string;
+  sourceBaselineTree: string;
   functions: Array<{
     name: string;
     verifyJwt: boolean;
@@ -21,6 +22,7 @@ type ConsumerContract = {
   status: string;
   producerOwner: string;
   producerBaselineCommit: string;
+  producerBaselineTree: string;
   databaseTables: string[];
   databaseFunctions: string[];
   websiteFunctionConsumers: Array<{
@@ -105,7 +107,8 @@ if (
   manifest.schemaVersion !== 1 ||
   manifest.status !== "additive-candidate-not-deployed" ||
   manifest.productionOwner !== "Mochirii-Wushu/Mochirii-Website" ||
-  !/^[0-9a-f]{40}$/u.test(manifest.sourceBaselineCommit)
+  !/^[0-9a-f]{40}$/u.test(manifest.sourceBaselineCommit) ||
+  !/^[0-9a-f]{40}$/u.test(manifest.sourceBaselineTree)
 ) fail("Runtime manifest provenance/status is incomplete.");
 sameSet(
   manifest.functions.map(({ name }) => name),
@@ -290,7 +293,8 @@ if (
   consumer.schemaVersion !== 1 ||
   consumer.status !== "consumer-contract-only" ||
   consumer.producerOwner !== manifest.productionOwner ||
-  consumer.producerBaselineCommit !== manifest.sourceBaselineCommit
+  consumer.producerBaselineCommit !== manifest.sourceBaselineCommit ||
+  consumer.producerBaselineTree !== manifest.sourceBaselineTree
 ) fail("Website consumer contract provenance/status drifted.");
 const discoveredTables = [
   ...runtimeSource.matchAll(/\.from\(\s*"([a-z0-9_]+)"/gu),

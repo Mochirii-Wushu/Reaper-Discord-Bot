@@ -4,6 +4,12 @@
 
 This is an additive, source-only candidate. It has not been deployed, has not changed any provider, and is not the production owner. The current Website source at the baseline recorded in `contracts/reaper-edge-runtime.v1.json` remains authoritative.
 
+The recorded Website baseline is union commit
+`f31834c2ce451ca4d4631690c7ea2628e7ee8821`, tree
+`590cb5b67b83c9414f0c515fe6e7b3125b388b17`. Both Reaper contracts bind to
+the same commit and tree so a later Website rebase cannot silently widen the
+consumer boundary.
+
 ## Candidate Boundary
 
 Reaper contains exactly six bot execution functions and the bot-owned helpers/tests they require. The canonical manifest also records all nine Discord commands routed by `reaper-discord-interactions`.

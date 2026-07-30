@@ -2,7 +2,8 @@
   "schemaVersion": 1,
   "status": "consumer-contract-only",
   "producerOwner": "Mochirii-Wushu/Mochirii-Website",
-  "producerBaselineCommit": "2d437ea5abee2d38aff0193a7d54f174f8721a03",
+  "producerBaselineCommit": "f31834c2ce451ca4d4631690c7ea2628e7ee8821",
+  "producerBaselineTree": "590cb5b67b83c9414f0c515fe6e7b3125b388b17",
   "databaseTables": [
     "discord_managed_permission_overwrites",
     "discord_resources",

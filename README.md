@@ -25,6 +25,12 @@ It is not deployed and does not transfer production ownership. The Website repos
 
 The candidate contains no deployment workflow or provider values. Runtime identities, origins, and secrets must be supplied by an independently reviewed activation packet and fail closed when missing or malformed.
 
+The current consumer baseline is Website union commit
+`f31834c2ce451ca4d4631690c7ea2628e7ee8821`, tree
+`590cb5b67b83c9414f0c515fe6e7b3125b388b17`. The candidate's intentional
+fail-closed differences are recorded in
+[`docs/edge-function-ownership-candidate.md`](docs/edge-function-ownership-candidate.md).
+
 ## Welcome DM Gateway Worker
 
 New-member welcome DMs require a persistent Discord Gateway connection because Discord member-join notifications are Gateway events, not Interactions webhooks. Supabase Edge Functions and Vercel Functions are not the right runtime for that long-running connection.
@@ -124,7 +130,26 @@ bun run edge:contracts
 bun run edge:fmt
 bun run edge:check
 bun run edge:test
+bun run audit:all
 ```
+
+`bun run check` includes the high/critical dependency threshold, source-only
+release contract, approved welcome-message hash, Gateway lifecycle contract,
+and Edge Function checks. See [`SECURITY.md`](SECURITY.md) and
+[`docs/dependency-security.md`](docs/dependency-security.md).
+
+## Private runtime readiness
+
+An approved persistent host may configure `REAPER_HEALTH_STATE_PATH` to an
+absolute host-owned file. The worker atomically records a provider-neutral
+readiness snapshot without account, guild, member, or credential values. A
+private supervisor probe uses `bun run health:check -- <absolute-path>`.
+
+The immutable-artifact, SBOM, provenance, restart, session-resume, rollback,
+and workstation-off gates are defined in
+[`contracts/gateway-release.v1.json`](contracts/gateway-release.v1.json) and
+[`docs/runtime-operations.md`](docs/runtime-operations.md). This repository
+still contains no deployment workflow and no runtime has been activated.
 
 ## Production Runtime
 
