@@ -54,8 +54,15 @@ does not provision keys or activate the candidate.
 ```sh
 bun install --frozen-lockfile
 bun run check
+MOCHIRII_WEBSITE_ROOT=/absolute/path/to/clean/Website bun run website:compat
 git diff --check
 ```
+
+`website:compat` is read-only. It requires the exact clean Website baseline,
+checks both commit and tree identities, confirms the six function/JWT and
+dependency contracts, and proves that every declared table, RPC, route, and
+gallery-ingest authentication header still exists. It does not contact a
+provider or invoke a function.
 
 CI pins Bun and Deno 2.9.4, verifies the Deno binary checksum, uses function-local import maps and lockfiles, and runs contract, formatting, type, behavior, path, and provider-boundary checks. The workflow has no deployment job.
 

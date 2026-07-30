@@ -33,7 +33,14 @@ if (
   manifest.engines?.bun !== "1.3.14" ||
   manifest.engines?.node !== "22.23.1"
 ) fail("Repository toolchains are not pinned to the reviewed versions.");
-for (const script of ["audit:all", "audit:runtime", "health:check"]) {
+for (
+  const script of [
+    "audit:all",
+    "audit:runtime",
+    "health:check",
+    "website:compat",
+  ]
+) {
   if (!manifest.scripts?.[script]) fail(`Missing required ${script} script.`);
 }
 if (manifest.scripts?.["audit:runtime"] !== "bun audit --audit-level=high") {

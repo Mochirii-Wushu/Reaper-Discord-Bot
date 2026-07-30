@@ -23,7 +23,8 @@
     "release:check": "bun scripts/check-release-readiness.ts",
     "start": "node dist/index.js",
     "test": "bun test tests",
-    "typecheck": "bun node_modules/typescript/bin/tsc --noEmit"
+    "typecheck": "bun node_modules/typescript/bin/tsc --noEmit",
+    "website:compat": "bun scripts/check-website-source-compatibility.ts"
   },
   "dependencies": {
     "discord.js": "^14.27.0",
