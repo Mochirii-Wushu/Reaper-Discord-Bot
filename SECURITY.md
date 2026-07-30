@@ -2,9 +2,11 @@
 
 ## Reporting
 
-Report suspected vulnerabilities privately through this repository's GitHub
-Security Advisories. Do not open a public issue for a suspected secret,
-authorization weakness, private member data exposure, or live runtime defect.
+Report suspected vulnerabilities through repository Security Advisories when
+that feature is enabled. Otherwise contact an accountable repository owner
+through the organization's established private security channel. Do not open
+a public issue for a suspected secret, authorization weakness, private member
+data exposure, or live runtime defect.
 
 Do not include secrets, credentials, private payloads, signed media URLs,
 production identifiers, or member data in a report. Provide the smallest
