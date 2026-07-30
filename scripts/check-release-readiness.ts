@@ -37,6 +37,7 @@ for (
   const script of [
     "audit:all",
     "audit:runtime",
+    "contracts:check",
     "health:check",
     "website:compat",
   ]
@@ -58,7 +59,6 @@ if (
   release.entrypoint !== "dist/index.js" ||
   release.toolchain.bun !== "1.3.14" ||
   release.toolchain.node !== "22.23.1" ||
-  release.toolchain.deno !== "2.9.4" ||
   release.welcomeDmSha256 !== welcomeHash
 ) fail("Gateway release contract or approved welcome message drifted.");
 

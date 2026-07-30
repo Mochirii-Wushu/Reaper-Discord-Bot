@@ -1,11 +1,12 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 type RuntimeManifest = {
   schemaVersion: number;
   status: string;
   productionOwner: string;
+  consumerRepository: string;
   sourceBaselineCommit: string;
   sourceBaselineTree: string;
   functions: Array<{
@@ -23,6 +24,7 @@ type ConsumerContract = {
   producerOwner: string;
   producerBaselineCommit: string;
   producerBaselineTree: string;
+  producerFilePolicy: Record<string, boolean>;
   databaseTables: string[];
   databaseFunctions: string[];
   websiteFunctionConsumers: Array<{
@@ -33,12 +35,12 @@ type ConsumerContract = {
   websiteRouteConsumers: Array<{
     path: string;
     purpose: string;
+    sourcePath: string;
   }>;
   retainedByProducer: string[];
 };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const functionsRoot = join(root, "supabase", "functions");
 const expectedFunctions = [
   "reaper-discord-interactions",
   "reaper-discord-member-sync",
@@ -65,9 +67,9 @@ const expectedAuthentication = new Map<string, string>([
     "reaper-spinner-dispatch",
     "constant-time-shared-secret-or-scoped-media-capability",
   ],
-  ["send-vote-reminder", "constant-time-cron-secret"],
-  ["send-member-spotlight-poll", "constant-time-cron-secret"],
-  ["publish-member-spotlight-winner", "constant-time-cron-secret"],
+  ["send-vote-reminder", "exact-cron-secret"],
+  ["send-member-spotlight-poll", "exact-cron-secret"],
+  ["publish-member-spotlight-winner", "exact-cron-secret"],
 ]);
 
 function fail(message: string): never {
@@ -102,29 +104,32 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
+function isSafeRepositoryPath(path: string): boolean {
+  const normalized = normalize(path);
+  return Boolean(path) &&
+    !isAbsolute(path) &&
+    normalized !== ".." &&
+    !normalized.startsWith(`..${sep}`) &&
+    !normalized.startsWith("../");
+}
+
 const manifest = json<RuntimeManifest>("contracts/reaper-edge-runtime.v1.json");
 if (
   manifest.schemaVersion !== 1 ||
-  manifest.status !== "additive-candidate-not-deployed" ||
+  manifest.status !== "website-owned-runtime-contract" ||
   manifest.productionOwner !== "Mochirii-Wushu/Mochirii-Website" ||
+  manifest.consumerRepository !== "Mochirii-Wushu/Reaper-Discord-Bot" ||
   !/^[0-9a-f]{40}$/u.test(manifest.sourceBaselineCommit) ||
   !/^[0-9a-f]{40}$/u.test(manifest.sourceBaselineTree)
-) fail("Runtime manifest provenance/status is incomplete.");
+) fail("Runtime contract provenance/status is incomplete.");
 sameSet(
   manifest.functions.map(({ name }) => name),
   expectedFunctions,
-  "function manifest",
+  "function contract",
 );
-sameSet(
-  readdirSync(functionsRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name !== "_shared")
-    .map((entry) => entry.name),
-  expectedFunctions,
-  "function directory inventory",
-);
-sameSet(manifest.discordCommands, expectedCommands, "Discord command manifest");
+sameSet(manifest.discordCommands, expectedCommands, "Discord command contract");
 if (manifest.functions.some(({ verifyJwt }) => verifyJwt !== false)) {
-  fail("Every additive Reaper function must declare verifyJwt=false.");
+  fail("Every Website-owned Reaper function must declare verifyJwt=false.");
 }
 for (const { name, authentication } of manifest.functions) {
   if (expectedAuthentication.get(name) !== authentication) {
@@ -134,156 +139,15 @@ for (const { name, authentication } of manifest.functions) {
 sameSet(
   Object.keys(manifest.activationBoundary),
   [
-    "deployableFromThisBranch",
+    "deployableFromThisRepository",
+    "copiedSupabaseSourceIncluded",
     "providerConfigurationIncluded",
     "schemaOrScheduleOwnershipTransferred",
   ],
   "activation boundary",
 );
-if (
-  Object.values(manifest.activationBoundary).some(Boolean) ||
-  manifest.functions.some(({ authentication }) => !authentication)
-) {
-  fail(
-    "The additive candidate must remain non-deployable with explicit application authentication.",
-  );
-}
-
-const config = read("supabase/config.toml");
-const configNames = [...config.matchAll(/^\[functions\.([^\]]+)\]$/gmu)].map((
-  match,
-) => match[1]);
-sameSet(configNames, expectedFunctions, "Supabase function config");
-for (const name of expectedFunctions) {
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
-  const block = config.match(
-    new RegExp(
-      `\\[functions\\.${escaped}\\]([\\s\\S]*?)(?=\\n\\[functions\\.|$)`,
-      "u",
-    ),
-  )?.[1] || "";
-  if (!/^verify_jwt = false$/mu.test(block)) {
-    fail(`${name} must keep verify_jwt=false.`);
-  }
-  if (
-    !block.includes(`import_map = "./functions/${name}/deno.json"`) ||
-    !block.includes(`entrypoint = "./functions/${name}/index.ts"`)
-  ) fail(`${name} must use its function-local import map and entrypoint.`);
-  sameSet(
-    readdirSync(join(functionsRoot, name)).filter((entry) =>
-      entry !== "node_modules"
-    ),
-    ["deno.json", "deno.lock", "index.ts"],
-    `${name} file inventory`,
-  );
-  for (const file of ["index.ts", "deno.json", "deno.lock"]) {
-    if (!existsSync(join(functionsRoot, name, file))) {
-      fail(`${name}/${file} is missing.`);
-    }
-  }
-  const deno = json<{ imports: Record<string, string> }>(
-    `supabase/functions/${name}/deno.json`,
-  );
-  if (
-    deno.imports["@supabase/functions-js/edge-runtime.d.ts"] !==
-      "jsr:@supabase/functions-js@2.110.8/edge-runtime.d.ts" ||
-    deno.imports["@supabase/supabase-js"] !==
-      "npm:@supabase/supabase-js@2.110.8"
-  ) fail(`${name} must pin both approved Supabase packages to 2.110.8.`);
-  const allowedImports = name === "reaper-discord-interactions"
-    ? [
-      "@supabase/functions-js/edge-runtime.d.ts",
-      "@supabase/supabase-js",
-      "tweetnacl",
-    ]
-    : ["@supabase/functions-js/edge-runtime.d.ts", "@supabase/supabase-js"];
-  sameSet(Object.keys(deno.imports), allowedImports, `${name} import map`);
-  if (
-    name === "reaper-discord-interactions" &&
-    deno.imports.tweetnacl !== "npm:tweetnacl@1.0.3"
-  ) {
-    fail("Discord signature verification must pin tweetnacl@1.0.3.");
-  }
-}
-if (/^project_id\s*=|\[db\]|\[auth\]|\[storage\]/mu.test(config)) {
-  fail(
-    "The Reaper-local config must not contain project/provider configuration.",
-  );
-}
-
-const interactionSource = read(
-  "supabase/functions/reaper-discord-interactions/index.ts",
-);
-const commandBlock = interactionSource.match(
-  /const commandName =[\s\S]*?if\s*\(\s*!\[\s*([\s\S]*?)\s*\]\.includes\(commandName\)\s*\)/u,
-)?.[1] || "";
-sameSet(
-  [...commandBlock.matchAll(/"([a-z-]+)"/gu)].map((match) => match[1]),
-  expectedCommands,
-  "handled Discord commands",
-);
-const interactionHandler = interactionSource.slice(
-  interactionSource.indexOf("Deno.serve("),
-);
-const boundedBodyIndex = interactionHandler.indexOf(
-  "readBoundedUtf8RequestBody(",
-);
-const signatureIndex = interactionHandler.indexOf("verifyDiscordSignature(");
-const jsonRoutingIndex = interactionHandler.indexOf("JSON.parse(");
-if (
-  boundedBodyIndex < 0 ||
-  signatureIndex <= boundedBodyIndex ||
-  jsonRoutingIndex <= signatureIndex ||
-  interactionHandler.includes("await req.text()") ||
-  !interactionSource.includes(
-    "const MAX_DISCORD_INTERACTION_BODY_BYTES = 64 * 1024;",
-  )
-) {
-  fail(
-    "Discord interactions must bound the raw body, verify Ed25519, then route JSON.",
-  );
-}
-for (const name of expectedFunctions) {
-  const source = read(`supabase/functions/${name}/index.ts`);
-  if (!source.includes(`runtimeProfileReady("${name}")`)) {
-    fail(`${name} must fail closed against its runtime profile.`);
-  }
-}
-for (
-  const name of [
-    "reaper-discord-member-sync",
-    "send-vote-reminder",
-    "send-member-spotlight-poll",
-    "publish-member-spotlight-winner",
-  ]
-) {
-  const source = read(`supabase/functions/${name}/index.ts`);
-  if (!source.includes("constantTimeSecretEqual(")) {
-    fail(`${name} must compare its application secret in constant time.`);
-  }
-}
-
-const runtimeFiles = sourceFiles(functionsRoot)
-  .filter((path) => path.endsWith(".ts"))
-  .filter((path) =>
-    !path.endsWith("_test.ts") && !path.endsWith("edge-tests.ts")
-  );
-const runtimeSource = runtimeFiles.map((path) => readFileSync(path, "utf8"))
-  .join("\n");
-if (/\b\d{16,22}\b/u.test(runtimeSource)) {
-  fail("Runtime source must not embed Discord/provider snowflake identifiers.");
-}
-if (
-  /https:\/\/(?:social\.)?mochirii\.com|\.supabase\.co|\.vercel\.app/iu.test(
-    runtimeSource + config,
-  )
-) {
-  fail("Runtime source/config must not embed production URLs.");
-}
-if (
-  /Deno\.env\.get\([^)]*\).*(?:console\.|JSON\.stringify)/u.test(runtimeSource)
-) {
-  fail("Potential secret-value logging pattern detected.");
+if (Object.values(manifest.activationBoundary).some(Boolean)) {
+  fail("The Reaper contract consumer must remain non-deployable and source-free.");
 }
 
 const consumer = json<ConsumerContract>(
@@ -296,89 +160,58 @@ if (
   consumer.producerBaselineCommit !== manifest.sourceBaselineCommit ||
   consumer.producerBaselineTree !== manifest.sourceBaselineTree
 ) fail("Website consumer contract provenance/status drifted.");
-const discoveredTables = [
-  ...runtimeSource.matchAll(/\.from\(\s*"([a-z0-9_]+)"/gu),
-].map((match) => match[1]);
-const discoveredFunctions = [
-  ...runtimeSource.matchAll(/\.rpc\(\s*"([a-z0-9_]+)"/gu),
-].map((match) => match[1]);
-sameSet(discoveredTables, consumer.databaseTables, "Website table consumers");
 sameSet(
-  discoveredFunctions,
-  consumer.databaseFunctions,
-  "Website RPC consumers",
+  Object.keys(consumer.producerFilePolicy),
+  [
+    "compareFunctionDependencyClosureToBaseline",
+    "compareFunctionManifestsAndLocksToBaseline",
+    "compareRelevantConfigBlocksToBaseline",
+    "allowUnrelatedProducerTreeChanges",
+  ],
+  "producer file policy",
 );
+if (Object.values(consumer.producerFilePolicy).some((value) => value !== true)) {
+  fail("Every reviewed producer file-parity control must remain enabled.");
+}
+for (const [label, values] of [
+  ["database table", consumer.databaseTables],
+  ["database function", consumer.databaseFunctions],
+] as const) {
+  if (
+    values.length === 0 ||
+    values.some((value) => !/^[a-z][a-z0-9_]*$/u.test(value)) ||
+    new Set(values).size !== values.length
+  ) fail(`${label} contract must contain unique safe identifiers.`);
+}
 sameSet(
   consumer.websiteFunctionConsumers.map(({ name }) => name),
   ["submit-discord-gallery-image"],
   "Website function consumers",
 );
-const expectedGalleryIngestHeaders = [
-  "x-mochirii-gallery-key-id",
-  "x-mochirii-gallery-timestamp",
-  "x-mochirii-gallery-nonce",
-  "x-mochirii-gallery-signature",
-] as const;
-for (
-  const { name, authentication, authenticationHeaders } of consumer
-    .websiteFunctionConsumers
-) {
-  sameSet(
-    authenticationHeaders,
-    expectedGalleryIngestHeaders,
-    `${name} authentication headers`,
-  );
-  if (
-    !runtimeSource.includes(`/functions/v1/${name}`) ||
-    authentication !== "body-bound-hmac-sha256-v1" ||
-    authenticationHeaders.some((header) => !runtimeSource.includes(header))
-  ) {
-    fail(`Website function consumer ${name} is not represented in source.`);
-  }
-}
-const galleryIngestAuthSource = read(
-  "supabase/functions/_shared/discord-gallery-ingest-auth.ts",
-);
-for (
-  const required of [
-    "createDiscordGalleryIngestHeaders",
-    "DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON",
-    "DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID",
-    "HMAC",
-    "SHA-256",
-    "crypto.getRandomValues",
-  ]
-) {
-  if (!galleryIngestAuthSource.includes(required)) {
-    fail(`Gallery ingest signer is missing ${required}.`);
-  }
-}
+const galleryConsumer = consumer.websiteFunctionConsumers[0];
 if (
-  /DISCORD_GALLERY_INGEST_SECRET|x-mochirii-reaper-secret/u.test(
-    runtimeSource,
-  )
-) {
-  fail("The Edge candidate must not retain the former gallery static secret.");
-}
+  galleryConsumer.authentication !== "body-bound-hmac-sha256-v1" ||
+  new Set(galleryConsumer.authenticationHeaders).size !== 4
+) fail("Gallery ingest authentication contract drifted.");
+sameSet(
+  galleryConsumer.authenticationHeaders,
+  [
+    "x-mochirii-gallery-key-id",
+    "x-mochirii-gallery-timestamp",
+    "x-mochirii-gallery-nonce",
+    "x-mochirii-gallery-signature",
+  ],
+  "Gallery ingest authentication headers",
+);
 sameSet(
   consumer.websiteRouteConsumers.map(({ path }) => path),
   ["data/guild-schedule.json", "spinner/media/render"],
   "Website route consumers",
 );
-for (const { path, purpose } of consumer.websiteRouteConsumers) {
-  if (!purpose || !runtimeSource.includes(`siteUrl("${path}")`)) {
-    fail(`Website route consumer ${path} is not represented in source.`);
+for (const route of consumer.websiteRouteConsumers) {
+  if (!route.purpose || !isSafeRepositoryPath(route.sourcePath)) {
+    fail(`Website route consumer ${route.path} has an unsafe source contract.`);
   }
-}
-if (
-  runtimeSource.includes('Deno.env.get("GUILD_SCHEDULE_URL")') ||
-  !read("supabase/functions/_shared/reaper-event-sync-workflow.ts").includes(
-    "fetch(deps.guildScheduleUrl,",
-  )
-) {
-  fail(
-    "Guild event sync must use only the contracted Website schedule route.",
-  );
 }
 sameSet(
   consumer.retainedByProducer,
@@ -393,17 +226,23 @@ sameSet(
   "retained Website ownership",
 );
 
+const localSupabaseRoot = join(root, "supabase");
+if (existsSync(localSupabaseRoot) && sourceFiles(localSupabaseRoot).length > 0) {
+  fail("Reaper must not copy Website-owned Supabase source or configuration.");
+}
+const environmentTemplate = read(".env.example");
+if (/DISCORD_GALLERY_INGEST_HMAC_(?:KEYS_JSON|ACTIVE_KEY_ID)/u.test(environmentTemplate)) {
+  fail("Reaper must not declare Website-owned Edge Function signing secrets.");
+}
 const workflowSource = sourceFiles(join(root, ".github", "workflows"))
   .map((path) => readFileSync(path, "utf8"))
   .join("\n");
 if (
-  /supabase\s+functions\s+deploy|vercel\s+deploy|docker\s+push|ghcr\.io/iu.test(
+  /supabase\s+(?:functions\s+deploy|db\s+push)|vercel\s+deploy|docker\s+push|ghcr\.io/iu.test(
     workflowSource,
   )
-) {
-  fail("Repository workflows must remain CI-only for this additive candidate.");
-}
+) fail("Repository workflows must remain CI-only contract consumers.");
 
 console.log(
-  `Validated ${expectedFunctions.length} additive functions, ${expectedCommands.length} Discord commands, and the Website consumer boundary.`,
+  `Validated ${expectedFunctions.length} Website-owned function contracts, ${expectedCommands.length} Discord commands, and no copied Supabase source.`,
 );

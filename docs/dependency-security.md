@@ -1,8 +1,9 @@
 # Dependency Security
 
-The repository pins Bun `1.3.14`, Node.js `22.23.1`, and Deno `2.9.4`.
-Function-local import maps and frozen lockfiles remain authoritative for the six
-Edge Function candidates.
+The repository pins Bun `1.3.14` and Node.js `22.23.1`. Website owns the six
+contracted Edge Functions, their Deno toolchain, function-local import maps,
+and frozen lockfiles; Reaper validates that producer boundary read-only and
+does not copy those dependencies.
 
 `bun run audit:runtime` is a required check and fails on a high or critical
 advisory. `bun run audit:all` records the complete current advisory inventory.

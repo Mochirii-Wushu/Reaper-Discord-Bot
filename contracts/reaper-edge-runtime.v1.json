@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
-  "status": "additive-candidate-not-deployed",
+  "status": "website-owned-runtime-contract",
   "productionOwner": "Mochirii-Wushu/Mochirii-Website",
-  "sourceBaselineCommit": "f31834c2ce451ca4d4631690c7ea2628e7ee8821",
-  "sourceBaselineTree": "590cb5b67b83c9414f0c515fe6e7b3125b388b17",
+  "consumerRepository": "Mochirii-Wushu/Reaper-Discord-Bot",
+  "sourceBaselineCommit": "c1dbbfa10eec61375c8d99123552a2b38d57cd07",
+  "sourceBaselineTree": "85c0698c2858e16f19a31a734ea8af7f3a53e332",
   "functions": [
     {
       "name": "reaper-discord-interactions",
@@ -23,17 +24,17 @@
     {
       "name": "send-vote-reminder",
       "verifyJwt": false,
-      "authentication": "constant-time-cron-secret"
+      "authentication": "exact-cron-secret"
     },
     {
       "name": "send-member-spotlight-poll",
       "verifyJwt": false,
-      "authentication": "constant-time-cron-secret"
+      "authentication": "exact-cron-secret"
     },
     {
       "name": "publish-member-spotlight-winner",
       "verifyJwt": false,
-      "authentication": "constant-time-cron-secret"
+      "authentication": "exact-cron-secret"
     }
   ],
   "discordCommands": [
@@ -48,7 +49,8 @@
     "photo-day-poll"
   ],
   "activationBoundary": {
-    "deployableFromThisBranch": false,
+    "deployableFromThisRepository": false,
+    "copiedSupabaseSourceIncluded": false,
     "providerConfigurationIncluded": false,
     "schemaOrScheduleOwnershipTransferred": false
   }

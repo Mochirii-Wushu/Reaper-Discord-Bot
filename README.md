@@ -10,9 +10,10 @@ ${SUPABASE_FUNCTIONS_URL}/reaper-discord-interactions
 
 This repository remains useful for guild command registration, contract tests, a rollback Gallery Gateway runtime reference, and the separate welcome-DM Gateway worker. Do not move slash-command production handling away from Supabase unless a later approved plan changes that architecture.
 
-## Additive Edge Function Ownership Candidate
+## Website Edge Function Contract Consumer
 
-`supabase/` is a local, CI-only ownership candidate for these six bot execution functions:
+The Website repository is the only source and deployment owner for these six
+bot execution functions:
 
 - `reaper-discord-interactions`
 - `reaper-discord-member-sync`
@@ -21,15 +22,19 @@ This repository remains useful for guild command registration, contract tests, a
 - `send-member-spotlight-poll`
 - `publish-member-spotlight-winner`
 
-It is not deployed and does not transfer production ownership. The Website repository remains the production source for the functions, migrations, schema, row-level security, schedules, Website producers, and generic project configuration. `contracts/reaper-edge-runtime.v1.json` is the canonical six-function and nine-command manifest; `contracts/website-supabase-consumer.v1.json` records the versioned database and Website-function consumer boundary.
+Reaper contains no `supabase/` source or configuration and has no path that can
+deploy these functions. `contracts/reaper-edge-runtime.v1.json` records their
+six-function, nine-command, JWT, and application-authentication contract.
+`contracts/website-supabase-consumer.v1.json` records the database, RPC,
+Website-function, and Website-route consumer boundary.
 
-The candidate contains no deployment workflow or provider values. Runtime identities, origins, and secrets must be supplied by an independently reviewed activation packet and fail closed when missing or malformed.
-
-The current consumer baseline is Website union commit
-`f31834c2ce451ca4d4631690c7ea2628e7ee8821`, tree
-`590cb5b67b83c9414f0c515fe6e7b3125b388b17`. The candidate's intentional
-fail-closed differences are recorded in
-[`docs/edge-function-ownership-candidate.md`](docs/edge-function-ownership-candidate.md).
+The current reviewed producer baseline is Website union commit
+`c1dbbfa10eec61375c8d99123552a2b38d57cd07`, tree
+`85c0698c2858e16f19a31a734ea8af7f3a53e332`. The read-only compatibility
+check compares only the contracted function dependency closure, manifests,
+locks, relevant config blocks, and route contracts. Unrelated Website changes
+do not invalidate compatibility and no whole Website tree is copied here. See
+[`docs/website-edge-contract-consumer.md`](docs/website-edge-contract-consumer.md).
 
 ## Welcome DM Gateway Worker
 
@@ -115,10 +120,8 @@ The public Discord command contract is:
 - `DISCORD_GALLERY_CHANNEL_ID`
 - `SUPABASE_FUNCTIONS_URL`
 - `DISCORD_GALLERY_INGEST_SECRET`
-- `DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON` (one to three key IDs mapped to independent 32-128 byte secrets; Edge candidate only)
-- `DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID` (one configured key ID; Edge candidate only)
 
-The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and optional `WELCOME_DM_ENABLED`. Gallery command registration and the rollback `/submit` Gateway fallback still require the other values. The additive Edge candidate signs gallery ingest requests with the two HMAC variables and never accepts the fallback's former static-secret header.
+The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and optional `WELCOME_DM_ENABLED`. Gallery command registration and the rollback `/submit` Gateway fallback still require the other values. Website-owned Edge Function HMAC keys remain in the Website provider boundary and are never declared or stored here.
 
 ## Validation
 
@@ -126,10 +129,8 @@ The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and op
 bun run typecheck
 bun test
 bun run build
-bun run edge:contracts
-bun run edge:fmt
-bun run edge:check
-bun run edge:test
+bun run contracts:check
+MOCHIRII_WEBSITE_ROOT=/absolute/path/to/clean/Website bun run website:compat
 bun run audit:all
 ```
 
@@ -168,7 +169,7 @@ still contains no deployment workflow and no runtime has been activated.
 - This source change does not enable pending-verification forwarding, deploy Reaper, change Discord or Supabase configuration, or send a Discord message.
 - Local and pull-request validation uses synthetic fixtures with no provider network calls. Green source tests do not prove that a production Gateway worker is running this revision.
 - Enabling the forwarder, publishing a runtime image, or changing a live worker requires a separately reviewed deployment packet with exact source, configuration, rollback, and live readback evidence.
-- The additive Edge Function candidate is also non-deployable from this repository. Moving production ownership requires a separate decision record, exact provider packet, Website compatibility window, and rollback/readback evidence.
+- Reaper is a contract-only consumer of the Website Edge Functions. Moving production ownership requires a successor architecture decision, an exact single-writer provider packet, a compatibility window, and rollback/readback evidence.
 
 ## Deployment Guardrails
 
