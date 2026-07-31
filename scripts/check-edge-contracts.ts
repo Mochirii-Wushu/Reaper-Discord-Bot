@@ -67,9 +67,9 @@ const expectedAuthentication = new Map<string, string>([
     "reaper-spinner-dispatch",
     "constant-time-shared-secret-or-scoped-media-capability",
   ],
-  ["send-vote-reminder", "exact-cron-secret"],
-  ["send-member-spotlight-poll", "exact-cron-secret"],
-  ["publish-member-spotlight-winner", "exact-cron-secret"],
+  ["send-vote-reminder", "constant-time-cron-secret"],
+  ["send-member-spotlight-poll", "constant-time-cron-secret"],
+  ["publish-member-spotlight-winner", "constant-time-cron-secret"],
 ]);
 
 function fail(message: string): never {

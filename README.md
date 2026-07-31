@@ -29,8 +29,8 @@ six-function, nine-command, JWT, and application-authentication contract.
 Website-function, and Website-route consumer boundary.
 
 The current reviewed producer baseline is Website union commit
-`c1dbbfa10eec61375c8d99123552a2b38d57cd07`, tree
-`85c0698c2858e16f19a31a734ea8af7f3a53e332`. The read-only compatibility
+`d571ec9764bd0eea696a67a117287c9b6452f301`, tree
+`a6e3dbe9424e37697ceaa1c21d8e4f083ce65de9`. The read-only compatibility
 check compares only the contracted function dependency closure, manifests,
 locks, relevant config blocks, and route contracts. Unrelated Website changes
 do not invalidate compatibility and no whole Website tree is copied here. See

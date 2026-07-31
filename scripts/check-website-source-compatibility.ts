@@ -288,14 +288,27 @@ sameSet(
 const interactionHandler = interactionSource.slice(
   interactionSource.indexOf("Deno.serve("),
 );
-const rawBodyIndex = interactionHandler.indexOf("await req.text()");
-const signatureIndex = interactionHandler.indexOf("verifyDiscordSignature(");
-const jsonRoutingIndex = interactionHandler.indexOf("JSON.parse(");
+const boundedBodyIndex = interactionHandler.indexOf(
+  "readBoundedUtf8RequestBody(",
+);
+const signatureIndex = interactionHandler.indexOf(
+  "verifyDiscordSignature(req, bodyResult.bytes, publicKey)",
+);
+const jsonRoutingIndex = interactionHandler.indexOf(
+  "JSON.parse(bodyResult.text)",
+);
 if (
-  rawBodyIndex < 0 ||
-  signatureIndex <= rawBodyIndex ||
+  !interactionSource.includes(
+    "const MAX_DISCORD_INTERACTION_BODY_BYTES = 64 * 1024",
+  ) ||
+  boundedBodyIndex < 0 ||
+  signatureIndex <= boundedBodyIndex ||
   jsonRoutingIndex <= signatureIndex
-) fail("Website Discord interactions no longer verify the exact body before JSON routing.");
+) {
+  fail(
+    "Website Discord interactions no longer bound and verify the exact body before JSON routing.",
+  );
+}
 
 for (const { name, authentication } of runtime.functions) {
   const source = gitFile(current, `${functionsRoot}/${name}/index.ts`);

@@ -3,8 +3,8 @@
   "status": "website-owned-runtime-contract",
   "productionOwner": "Mochirii-Wushu/Mochirii-Website",
   "consumerRepository": "Mochirii-Wushu/Reaper-Discord-Bot",
-  "sourceBaselineCommit": "c1dbbfa10eec61375c8d99123552a2b38d57cd07",
-  "sourceBaselineTree": "85c0698c2858e16f19a31a734ea8af7f3a53e332",
+  "sourceBaselineCommit": "d571ec9764bd0eea696a67a117287c9b6452f301",
+  "sourceBaselineTree": "a6e3dbe9424e37697ceaa1c21d8e4f083ce65de9",
   "functions": [
     {
       "name": "reaper-discord-interactions",
@@ -24,17 +24,17 @@
     {
       "name": "send-vote-reminder",
       "verifyJwt": false,
-      "authentication": "exact-cron-secret"
+      "authentication": "constant-time-cron-secret"
     },
     {
       "name": "send-member-spotlight-poll",
       "verifyJwt": false,
-      "authentication": "exact-cron-secret"
+      "authentication": "constant-time-cron-secret"
     },
     {
       "name": "publish-member-spotlight-winner",
       "verifyJwt": false,
-      "authentication": "exact-cron-secret"
+      "authentication": "constant-time-cron-secret"
     }
   ],
   "discordCommands": [

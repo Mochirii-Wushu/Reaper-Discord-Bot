@@ -8,8 +8,8 @@ Function implementation, shared helper, import map, lockfile, migration,
 deployment workflow, provider identifier, or provider credential.
 
 The reviewed producer baseline is Website union commit
-`c1dbbfa10eec61375c8d99123552a2b38d57cd07`, tree
-`85c0698c2858e16f19a31a734ea8af7f3a53e332`. Website remains the sole source,
+`d571ec9764bd0eea696a67a117287c9b6452f301`, tree
+`a6e3dbe9424e37697ceaa1c21d8e4f083ce65de9`. Website remains the sole source,
 configuration, schema, schedule, secret-destination, and deployment owner for
 every function declared in its `supabase/config.toml`.
 
@@ -48,26 +48,25 @@ tree, then compares only the contracted producer files:
 - the spinner-render route source and required fail-closed markers; and
 - the current guild-schedule document's versioned UTC+8 event shape.
 
-It also rechecks command coverage, JWT parity, dependency pins, Discord
-signature-before-JSON ordering, the currently contracted secret comparisons,
-table/RPC usage, and gallery HMAC headers. It requires contracted producer files to be committed, performs
-no network request, contacts no provider, invokes no function, and makes no
-change to the Website worktree.
+It also rechecks command coverage, JWT parity, dependency pins, bounded exact
+Discord request-body signature-before-JSON ordering, constant-time secret
+comparisons, table/RPC usage, and gallery HMAC headers. It requires contracted
+producer files to be committed, performs no network request, contacts no
+provider, invokes no function, and makes no change to the Website worktree.
 
 The current Website HEAD and whole tree are deliberately not required to equal
 the baseline. A later Website commit with unrelated changes remains compatible
 when every contracted file and semantic boundary is unchanged. Contracted
 producer changes require a reviewed contract update and fresh parity evidence.
 
-## Producer Security Findings
+## Producer Security Baseline
 
-The exact reviewed Website baseline reads the Discord Interactions request body
-without an explicit byte ceiling before signature verification, and three cron
-functions use exact string equality rather than a constant-time comparison.
-The contracts describe that current behavior without endorsing it. Because
-Website is the sole producer, those hardenings belong in a focused Website
-change with its own tests and release review; Reaper must not carry a divergent
-copy as a substitute.
+The exact reviewed Website baseline streams no more than 64 KiB of Discord
+Interactions request bytes before signature verification and JSON routing. The
+vote-reminder and spotlight cron functions use the same bounded SHA-256
+fixed-digest comparison as the spinner dispatcher. Those controls and their
+focused tests remain Website-owned; Reaper verifies their committed producer
+dependency closure without carrying a divergent source copy.
 
 ## Future Ownership
 
