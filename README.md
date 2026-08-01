@@ -100,10 +100,14 @@ The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and op
 ## Validation
 
 ```sh
-bun run typecheck
-bun test
-bun run build
+bun install --frozen-lockfile
+bun run check
 ```
+
+The provider-neutral immutable container contract and its approval-gated build,
+publication, deployment, rollback, and workstation-independence procedures are
+documented in [`docs/operations/GATEWAY-ARTIFACT.md`](docs/operations/GATEWAY-ARTIFACT.md).
+No registry or runtime host is selected by that source packet.
 
 ## Production Runtime
 

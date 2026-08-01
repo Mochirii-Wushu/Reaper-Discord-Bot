@@ -5,14 +5,16 @@ import { SYNTHETIC_DISCORD_SNOWFLAKES } from "./discord-fixtures.js";
 
 const repositoryRoot = resolve(import.meta.dir, "..");
 const rootTextFiles = [
+  ".dockerignore",
   ".env.example",
   "AGENTS.md",
+  "Dockerfile",
   "package.json",
   "README.md",
   "tsconfig.build.json",
   "tsconfig.json",
 ];
-const scannedDirectories = [".github", "src", "tests"];
+const scannedDirectories = [".github", "docs", "scripts", "src", "tests"];
 const scannedExtensions = new Set([".json", ".md", ".ts", ".yaml", ".yml"]);
 const discordSnowflakePattern = /(?<!\d)\d{17,20}(?!\d)/g;
 

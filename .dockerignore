@@ -1,0 +1,8 @@
+**
+!bun.lock
+!Dockerfile
+!package.json
+!src/
+!src/**
+!tsconfig.build.json
+!tsconfig.json

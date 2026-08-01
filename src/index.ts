@@ -1,15 +1,46 @@
 import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
 import { loadConfig, loadGalleryConfig } from "./config.js";
 import { memberRolesChanged, syncPendingVerificationMember } from "./pending-verification.js";
+import { GatewayReadiness } from "./runtime-health.js";
 import { handleSubmitCommand } from "./submit.js";
 import { sendWelcomeDm } from "./welcome.js";
 
 const config = loadConfig();
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+const readiness = new GatewayReadiness();
+let shuttingDown = false;
+
+await readiness.initialize();
+
+function updateReadiness(ready: boolean): void {
+  const update = ready ? readiness.markReady() : readiness.markNotReady();
+  void update.catch(() => {
+    console.error("Reaper Gateway readiness update failed.");
+  });
+}
+
+async function shutdown(signal: "SIGINT" | "SIGTERM"): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.info(`Reaper received ${signal}; closing the Gateway connection.`);
+  await readiness.close().catch(() => {
+    console.error("Reaper Gateway readiness cleanup failed.");
+  });
+  client.destroy();
+}
+
+process.once("SIGINT", () => void shutdown("SIGINT"));
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
 
 client.once(Events.ClientReady, (readyClient) => {
+  updateReadiness(true);
   console.log(`Reaper is online as ${readyClient.user.tag}.`);
 });
+
+client.on(Events.ShardReady, () => updateReadiness(true));
+client.on(Events.ShardDisconnect, () => updateReadiness(false));
+client.on(Events.ShardReconnecting, () => updateReadiness(false));
+client.on(Events.Invalidated, () => updateReadiness(false));
 
 client.on(Events.GuildMemberAdd, async (member) => {
   const results = await Promise.allSettled([
