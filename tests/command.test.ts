@@ -10,5 +10,9 @@ describe("submit command schema", () => {
 
     expect(option?.type).toBe(5);
     expect(option?.required).toBeFalsy();
+    expect(submit?.description).toContain("Mōchirīī");
+    expect(option?.description).toContain("Mōchirīī");
+    expect(submit?.description).not.toContain("Mochirii");
+    expect(option?.description).not.toContain("Mochirii");
   });
 });

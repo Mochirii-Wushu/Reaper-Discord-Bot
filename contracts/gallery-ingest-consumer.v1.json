@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "status": "source-only-consumer-contract",
+  "producerRepository": "Mochirii-Wushu/Mochirii-Website",
+  "consumerRepository": "Mochirii-Wushu/Reaper-Discord-Bot",
+  "reviewedProducerCommit": "3a49e78ad73a51bec5c27fc79480e93b7a80edfd",
+  "reviewedProducerTree": "8a1d9419e72a9ab1ec66afc3f5ecefd837cfc981",
+  "origin": "https://deyvmtncimmcinldjyqe.supabase.co",
+  "method": "POST",
+  "path": "/functions/v1/submit-discord-gallery-image",
+  "authentication": {
+    "scheme": "body-bound-hmac-sha256-v1",
+    "headers": [
+      "x-mochirii-gallery-key-id",
+      "x-mochirii-gallery-timestamp",
+      "x-mochirii-gallery-nonce",
+      "x-mochirii-gallery-signature"
+    ],
+    "canonicalFields": [
+      "version",
+      "key-id",
+      "method",
+      "path",
+      "unix-timestamp-seconds",
+      "nonce",
+      "sha256-raw-body"
+    ],
+    "fieldSeparator": "LF",
+    "signaturePrefix": "v1=",
+    "maximumClockSkewSeconds": 60,
+    "maximumBodyBytes": 16384,
+    "nonceBytes": 16,
+    "minimumKeyBytes": 32,
+    "maximumKeyBytes": 128,
+    "maximumKeyCount": 3
+  },
+  "configuration": {
+    "keySet": "DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON",
+    "activeKeyId": "DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID"
+  },
+  "response": {
+    "mediaType": "application/json",
+    "maximumBytes": 65536,
+    "messageMaximumCharacters": 300,
+    "successFields": [
+      "data",
+      "duplicate",
+      "message",
+      "ok"
+    ],
+    "successDataFields": {
+      "createdAt": 80,
+      "status": 40,
+      "submissionId": 80
+    },
+    "errorFields": [
+      "error",
+      "message",
+      "ok"
+    ],
+    "eligibilityErrorFields": [
+      "error",
+      "message",
+      "missingRoleIds",
+      "ok"
+    ],
+    "errorMaximumCharacters": 80,
+    "errorCodes": [
+      "attachment_fetch_failed",
+      "attachment_too_large",
+      "discord_account_not_linked",
+      "discord_gallery_ingest_not_configured",
+      "discord_gallery_not_eligible",
+      "duplicate_lookup_failed",
+      "invalid_attachment_content",
+      "invalid_discord_submission",
+      "invalid_json",
+      "invalid_request",
+      "invalid_request_body",
+      "profile_lookup_failed",
+      "replayed_request",
+      "request_too_large",
+      "source_validation_commit_failed",
+      "storage_upload_failed",
+      "submission_insert_failed",
+      "verification_unavailable"
+    ],
+    "maximumMissingRoleIds": 2,
+    "missingRoleIdPattern": "^[0-9]{17,20}$",
+    "unknownFieldsAllowed": false
+  },
+  "fixture": "contracts/fixtures/gallery-ingest-hmac-v1.json",
+  "producerSource": [
+    "supabase/functions/_shared/discord-gallery-ingest-auth.ts",
+    "supabase/functions/submit-discord-gallery-image/index.ts"
+  ],
+  "consumerSource": [
+    "src/gallery-ingest-auth.ts",
+    "src/config.ts",
+    "src/supabase.ts"
+  ],
+  "activationBoundary": {
+    "providerConfigurationIncluded": false,
+    "secretValuesIncluded": false,
+    "deploymentIncluded": false,
+    "productionRequestIncluded": false
+  }
+}

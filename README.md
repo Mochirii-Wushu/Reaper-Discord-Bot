@@ -58,6 +58,15 @@ The public Discord command contract is:
 
 `share_to_instagram` is optional and defaults to `false`. The Supabase-hosted interaction sends `instagramOptIn: true` only when the member explicitly selects true. Reaper does not publish to Instagram. The Mochirii website moderator workflow creates and publishes Instagram queue items after approval.
 
+The rollback Gateway client authenticates its Website Gallery ingest request
+with the same body-bound HMAC-SHA256 v1 contract as the primary Supabase-hosted
+interaction runtime. It signs the exact raw JSON body, `POST` method, and exact
+`/functions/v1/submit-discord-gallery-image` path with a versioned key ID, Unix
+timestamp, and one-use 128-bit nonce. The former static-secret header is not a
+fallback. The rollback client accepts only the canonical Website function
+origin, rejects redirects, limits the request to 10 seconds, and reads at most
+64 KiB from a JSON response.
+
 ## Setup
 
 1. Install dependencies:
@@ -93,7 +102,8 @@ The public Discord command contract is:
 - `REAPER_PENDING_VERIFICATION_SYNC_MAX_ATTEMPTS` (optional, defaults to `2`)
 - `DISCORD_GALLERY_CHANNEL_ID`
 - `SUPABASE_FUNCTIONS_URL`
-- `DISCORD_GALLERY_INGEST_SECRET`
+- `DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON` (one to three key IDs mapped to independent 32–128-byte secrets)
+- `DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID` (one key ID present in the bounded key set)
 
 The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and optional `WELCOME_DM_ENABLED`. Gallery command registration and the rollback `/submit` Gateway fallback still require the other values.
 
@@ -102,7 +112,16 @@ The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and op
 ```sh
 bun install --frozen-lockfile
 bun run check
+bun run website:compat -- "C:\\absolute\\path\\to\\Website-worktree"
 ```
+
+`website:compat` is local and read-only. It imports the exact committed Website
+verifier from the supplied worktree and proves fresh signed-request acceptance,
+replay rejection, and raw-body binding with a synthetic fixture. The versioned
+consumer contract and protocol vector live in
+[`contracts/gallery-ingest-consumer.v1.json`](contracts/gallery-ingest-consumer.v1.json)
+and
+[`contracts/fixtures/gallery-ingest-hmac-v1.json`](contracts/fixtures/gallery-ingest-hmac-v1.json).
 
 The provider-neutral immutable container contract and its approval-gated build,
 publication, deployment, rollback, and workstation-independence procedures are
@@ -130,7 +149,7 @@ No registry or runtime host is selected by that source packet.
 ## Deployment Guardrails
 
 - Keep submissions restricted to the channel configured by `DISCORD_GALLERY_CHANNEL_ID`; never commit its production value.
-- Do not log tokens, ingest secrets, attachment signed URLs, or private payload bodies.
+- Keep the bounded Gallery HMAC key set and active key selection in the approved runtime secret store. Do not log tokens, HMAC keys, authentication headers, attachment signed URLs, or private payload bodies.
 - Do not grant Reaper Administrator, Message Content, Presences, or role-management permissions for the welcome DM worker.
 - If a token or secret is exposed, rotate it before restarting production.
 - No real Instagram post is created by this repo or by Discord submission alone.

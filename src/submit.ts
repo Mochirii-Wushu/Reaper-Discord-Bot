@@ -15,12 +15,22 @@ export interface SubmitInput {
   shareToInstagram?: boolean | null;
 }
 
+export function submitReplyOptions(content: string): {
+  content: string;
+  allowedMentions: { parse: [] };
+} {
+  return {
+    content,
+    allowedMentions: { parse: [] },
+  };
+}
+
 export function buildDiscordGalleryPayload(
   input: SubmitInput,
   config: Pick<GalleryConfig, "discordGuildId" | "discordGalleryChannelId">,
 ): DiscordGalleryPayload {
   if (input.guildId !== config.discordGuildId) {
-    throw new ReaperError("wrong_guild", "Gallery submissions are only available inside the Mochirii Discord server.");
+    throw new ReaperError("wrong_guild", "Gallery submissions are only available inside the Mōchirīī Discord server.");
   }
 
   if (input.channelId !== config.discordGalleryChannelId) {
@@ -90,11 +100,13 @@ export async function handleSubmitCommand(
     const input = inputFromInteraction(interaction);
     const payload = buildDiscordGalleryPayload(input, config);
     const response = await submit(config, payload);
-    await interaction.editReply(formatSubmitResponse(response, payload.instagramOptIn));
+    await interaction.editReply(
+      submitReplyOptions(formatSubmitResponse(response, payload.instagramOptIn)),
+    );
   } catch (error) {
     const message = error instanceof ReaperError
       ? error.message
       : "Gallery submission failed before it reached the moderation queue.";
-    await interaction.editReply(message);
+    await interaction.editReply(submitReplyOptions(message));
   }
 }

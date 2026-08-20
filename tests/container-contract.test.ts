@@ -6,12 +6,14 @@ const root = resolve(import.meta.dir, "..");
 const dockerfile = readFileSync(resolve(root, "Dockerfile"), "utf8");
 const dockerignore = readFileSync(resolve(root, ".dockerignore"), "utf8");
 const contract = JSON.parse(readFileSync(resolve(root, "docs/operations/gateway-artifact.v1.json"), "utf8"));
+const expectedNodeImage = "node:22.23.2-bookworm-slim@sha256:f32b81066cde10a75dbac96646099533316d94bac4150c55da1636e1f0ffdc46";
 
 describe("Gateway OCI artifact", () => {
   test("uses immutable multi-stage sources and an unprivileged production-only runtime", () => {
     expect(dockerfile).toMatch(/^# syntax=docker\/dockerfile:1\.18@sha256:[0-9a-f]{64}$/m);
     expect(dockerfile).toMatch(/oven\/bun:1\.3\.14-slim@sha256:[0-9a-f]{64}/);
-    expect(dockerfile).toMatch(/node:22\.23\.1-bookworm-slim@sha256:[0-9a-f]{64}/);
+    expect(dockerfile).toContain(`ARG NODE_IMAGE="${expectedNodeImage}"`);
+    expect(contract.build.runtimeImage).toBe(expectedNodeImage);
     expect(dockerfile).toContain("bun install --frozen-lockfile --production --ignore-scripts");
     expect(dockerfile).toContain("USER node");
     expect(dockerfile).not.toMatch(/^EXPOSE\b/m);

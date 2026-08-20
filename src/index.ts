@@ -2,7 +2,7 @@ import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
 import { loadConfig, loadGalleryConfig } from "./config.js";
 import { memberRolesChanged, syncPendingVerificationMember } from "./pending-verification.js";
 import { GatewayReadiness } from "./runtime-health.js";
-import { handleSubmitCommand } from "./submit.js";
+import { handleSubmitCommand, submitReplyOptions } from "./submit.js";
 import { sendWelcomeDm } from "./welcome.js";
 
 const config = loadConfig();
@@ -84,11 +84,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       error: error instanceof Error ? error.message : "Unknown error",
     });
 
-    const message = "Gallery submission fallback is not configured on this Reaper runtime.";
+    const message = "Mōchirīī gallery submissions are temporarily unavailable.";
     if (interaction.deferred || interaction.replied) {
-      await interaction.editReply(message);
+      await interaction.editReply(submitReplyOptions(message));
     } else {
-      await interaction.reply({ content: message, flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        ...submitReplyOptions(message),
+        flags: MessageFlags.Ephemeral,
+      });
     }
   }
 });

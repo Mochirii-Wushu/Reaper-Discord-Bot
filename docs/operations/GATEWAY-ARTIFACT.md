@@ -15,7 +15,7 @@ forwarder.
 ## Reproducible build contract
 
 `Dockerfile` uses exact digests for its Dockerfile frontend and the
-multi-architecture Bun 1.3.14 and Node.js 22.23.1 images. The build installs the
+multi-architecture Bun 1.3.14 and Node.js 22.23.2 images. The build installs the
 committed lockfile twice: once with
 development dependencies for TypeScript compilation and once with production
 dependencies only for the runtime. Lifecycle scripts are disabled. The final

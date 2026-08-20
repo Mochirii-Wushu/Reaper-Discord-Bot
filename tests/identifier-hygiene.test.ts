@@ -4,6 +4,7 @@ import { join, relative, resolve } from "node:path";
 import { SYNTHETIC_DISCORD_SNOWFLAKES } from "./discord-fixtures.js";
 
 const repositoryRoot = resolve(import.meta.dir, "..");
+const interactionEntrySource = readFileSync(join(repositoryRoot, "src", "index.ts"), "utf8");
 const rootTextFiles = [
   ".dockerignore",
   ".env.example",
@@ -14,7 +15,7 @@ const rootTextFiles = [
   "tsconfig.build.json",
   "tsconfig.json",
 ];
-const scannedDirectories = [".github", "docs", "scripts", "src", "tests"];
+const scannedDirectories = [".github", "contracts", "docs", "scripts", "src", "tests"];
 const scannedExtensions = new Set([".json", ".md", ".ts", ".yaml", ".yml"]);
 const discordSnowflakePattern = /(?<!\d)\d{17,20}(?!\d)/g;
 
@@ -46,5 +47,14 @@ describe("tracked Discord identifier hygiene", () => {
     }
 
     expect(violations).toEqual([]);
+  });
+});
+
+describe("member-facing brand hygiene", () => {
+  test("uses the Mōchirīī gallery name in fallback replies", () => {
+    expect(interactionEntrySource).toContain(
+      'const message = "Mōchirīī gallery submissions are temporarily unavailable.";',
+    );
+    expect(interactionEntrySource).not.toContain("on this Reaper runtime");
   });
 });

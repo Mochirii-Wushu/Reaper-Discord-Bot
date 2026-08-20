@@ -12,12 +12,15 @@ const [dockerfile, dockerignore, contract, packageJson, source, workflow] = awai
 ]);
 
 const errors = [];
+const expectedNodeImage = "node:22.23.2-bookworm-slim@sha256:f32b81066cde10a75dbac96646099533316d94bac4150c55da1636e1f0ffdc46";
 const requireText = (text, pattern, message) => {
   if (!pattern.test(text)) errors.push(message);
 };
 
 requireText(dockerfile, /^ARG BUN_IMAGE="oven\/bun:1\.3\.14-slim@sha256:[0-9a-f]{64}"$/m, "Builder image must be versioned and digest-pinned.");
-requireText(dockerfile, /^ARG NODE_IMAGE="node:22\.23\.1-bookworm-slim@sha256:[0-9a-f]{64}"$/m, "Runtime image must be versioned and digest-pinned.");
+if (dockerfile.match(/^ARG NODE_IMAGE="([^"]+)"$/m)?.[1] !== expectedNodeImage) {
+  errors.push("Runtime image must match the reviewed Node.js 22.23.2 index digest.");
+}
 requireText(dockerfile, /^# syntax=docker\/dockerfile:1\.18@sha256:[0-9a-f]{64}$/m, "Dockerfile frontend must be versioned and digest-pinned.");
 requireText(dockerfile, /bun install --frozen-lockfile --production --ignore-scripts/, "Production dependencies must use the frozen lockfile without lifecycle scripts.");
 requireText(dockerfile, /^USER node$/m, "Runtime must use the unprivileged node user.");
@@ -57,6 +60,7 @@ for (const key of Object.keys(contract.releaseGates ?? {})) {
 }
 if (contract.build?.builderImage !== dockerfile.match(/^ARG BUN_IMAGE="([^"]+)"$/m)?.[1]) errors.push("Builder provenance drifted from Dockerfile.");
 if (contract.build?.runtimeImage !== dockerfile.match(/^ARG NODE_IMAGE="([^"]+)"$/m)?.[1]) errors.push("Runtime provenance drifted from Dockerfile.");
+if (contract.build?.runtimeImage !== expectedNodeImage) errors.push("Runtime provenance does not match the reviewed Node.js 22.23.2 index digest.");
 if (contract.build?.dockerfileFrontend !== dockerfile.match(/^# syntax=([^\s]+)$/m)?.[1]) errors.push("Dockerfile frontend provenance drifted from Dockerfile.");
 if (contract.runtime?.rootAllowed !== false || contract.runtime?.user !== "node") errors.push("Runtime privilege contract is invalid.");
 if (contract.runtime?.workstationDependencyAllowed !== false) errors.push("Workstation independence must fail closed.");

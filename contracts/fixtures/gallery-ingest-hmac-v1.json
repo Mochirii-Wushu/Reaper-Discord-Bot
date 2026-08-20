@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "keyId": "primary",
+  "secret": "0123456789abcdef0123456789abcdef",
+  "method": "POST",
+  "path": "/functions/v1/submit-discord-gallery-image",
+  "timestamp": "1790000000",
+  "nonce": "0123456789abcdef0123456789abcdef",
+  "rawBody": "{\"guildId\":\"100000000000000001\",\"channelId\":\"100000000000000003\",\"messageId\":\"100000000000000005\",\"attachmentId\":\"100000000000000007\",\"discordUserId\":\"100000000000000006\",\"attachmentUrl\":\"https://cdn.discordapp.com/attachments/100000000000000003/100000000000000007/image.jpg\",\"mimeType\":\"image/jpeg\",\"sizeBytes\":12345,\"title\":\"Lantern Moment\",\"caption\":\"A gallery submission.\",\"instagramOptIn\":false,\"originalFilename\":\"image.jpg\"}",
+  "bodySha256": "7f17b0f94959597c6e39e4582af56f280f37184f12f294e6e9fe4c975ae10915",
+  "canonicalMessage": "v1\nprimary\nPOST\n/functions/v1/submit-discord-gallery-image\n1790000000\n0123456789abcdef0123456789abcdef\n7f17b0f94959597c6e39e4582af56f280f37184f12f294e6e9fe4c975ae10915",
+  "signature": "v1=21828f51a6001b7156dfc72d6350732de4e6417c12e19986c8c83b516664d696"
+}

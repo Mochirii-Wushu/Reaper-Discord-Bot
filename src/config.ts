@@ -1,4 +1,10 @@
 import { config as loadDotenv } from "dotenv";
+import {
+  discordGalleryIngestActiveKey,
+  discordGalleryIngestEndpoint,
+  parseDiscordGalleryIngestHmacKeys,
+  type DiscordGalleryIngestHmacKeys,
+} from "./gallery-ingest-auth.js";
 
 if (process.env.NODE_ENV !== "production") {
   loadDotenv({ path: process.env.DOTENV_CONFIG_PATH || ".env.local" });
@@ -19,7 +25,8 @@ export interface GalleryConfig extends ReaperConfig {
   discordApplicationId: string;
   discordGalleryChannelId: string;
   supabaseFunctionsUrl: string;
-  discordGalleryIngestSecret: string;
+  discordGalleryIngestHmacKeys: DiscordGalleryIngestHmacKeys;
+  discordGalleryIngestHmacActiveKeyId: string;
 }
 
 function requireEnv(env: NodeJS.ProcessEnv, key: string): string {
@@ -105,11 +112,34 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
 }
 
 export function loadGalleryConfig(env: NodeJS.ProcessEnv = process.env): GalleryConfig {
+  const supabaseFunctionsUrl = requireEnv(
+    env,
+    "SUPABASE_FUNCTIONS_URL",
+  ).replace(/\/+$/, "");
+  discordGalleryIngestEndpoint(supabaseFunctionsUrl);
+  const discordGalleryIngestHmacKeys = parseDiscordGalleryIngestHmacKeys(
+    requireEnv(env, "DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON"),
+  );
+  const discordGalleryIngestHmacActiveKeyId = requireEnv(
+    env,
+    "DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID",
+  );
+  if (
+    !discordGalleryIngestHmacKeys ||
+    !discordGalleryIngestActiveKey(
+      discordGalleryIngestHmacKeys,
+      discordGalleryIngestHmacActiveKeyId,
+    )
+  ) {
+    throw new Error("Discord Gallery ingest HMAC configuration is invalid.");
+  }
+
   return {
     ...loadConfig(env),
     discordApplicationId: requireEnv(env, "DISCORD_APPLICATION_ID"),
     discordGalleryChannelId: requireEnv(env, "DISCORD_GALLERY_CHANNEL_ID"),
-    supabaseFunctionsUrl: requireEnv(env, "SUPABASE_FUNCTIONS_URL").replace(/\/+$/, ""),
-    discordGalleryIngestSecret: requireEnv(env, "DISCORD_GALLERY_INGEST_SECRET"),
+    supabaseFunctionsUrl,
+    discordGalleryIngestHmacKeys,
+    discordGalleryIngestHmacActiveKeyId,
   };
 }

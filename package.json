@@ -6,19 +6,21 @@
   "packageManager": "bun@1.3.14",
   "engines": {
     "bun": "1.3.14",
-    "node": "22.23.1"
+    "node": "22.23.2"
   },
   "scripts": {
     "audit:production": "bun audit --production",
     "build": "bun node_modules/typescript/bin/tsc -p tsconfig.build.json",
-    "check": "bun run check:artifact && bun run typecheck && bun test tests && bun run build && bun run audit:production",
+    "check": "bun run check:artifact && bun run check:gallery-contract && bun run typecheck && bun test tests && bun run build && bun run audit:production",
     "check:artifact": "node scripts/check-container-contract.mjs",
+    "check:gallery-contract": "bun scripts/check-gallery-ingest-contract.ts",
     "check:container": "node scripts/check-built-container.mjs",
     "dev": "bun src/index.ts",
     "register:guild": "bun src/register-commands.ts",
     "start": "node dist/index.js",
     "test": "bun test tests",
-    "typecheck": "bun node_modules/typescript/bin/tsc --noEmit"
+    "typecheck": "bun node_modules/typescript/bin/tsc --noEmit",
+    "website:compat": "bun scripts/check-website-gallery-ingest-compatibility.ts"
   },
   "dependencies": {
     "discord.js": "^14.27.0",
