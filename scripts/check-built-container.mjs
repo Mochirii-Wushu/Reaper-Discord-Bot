@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 
 const image = process.env.REAPER_CONTAINER_IMAGE || "mochirii-reaper-gateway:local";
+const expectedRevision = process.env.REAPER_EXPECTED_REVISION || process.env.EXPECTED_SHA || "";
 
 function docker(args) {
   return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -10,11 +11,11 @@ const [inspection] = JSON.parse(docker(["image", "inspect", image]));
 const errors = [];
 const config = inspection?.Config ?? {};
 
-if (config.User !== "node") errors.push("Container runtime user must be node.");
-if (JSON.stringify(config.Entrypoint) !== JSON.stringify(["node", "dist/index.js"])) {
+if (config.User !== "65532:65532") errors.push("Container runtime user must be numeric nonroot.");
+if (JSON.stringify(config.Entrypoint) !== JSON.stringify(["/nodejs/bin/node", "dist/index.js"])) {
   errors.push("Container entrypoint drifted from the Gateway worker.");
 }
-if (JSON.stringify(config.Healthcheck?.Test) !== JSON.stringify(["CMD", "node", "dist/healthcheck.js"])) {
+if (JSON.stringify(config.Healthcheck?.Test) !== JSON.stringify(["CMD", "/nodejs/bin/node", "dist/healthcheck.js"])) {
   errors.push("Container readiness command drifted.");
 }
 if (config.ExposedPorts && Object.keys(config.ExposedPorts).length) errors.push("Gateway image must not expose a port.");
@@ -29,6 +30,11 @@ for (const key of ["org.opencontainers.image.created", "org.opencontainers.image
 if (!/^[0-9a-f]{40}$/.test(metadata["org.opencontainers.image.revision"] ?? "")) {
   errors.push("Container revision label must be a full commit SHA.");
 }
+if (!/^[0-9a-f]{40}$/.test(expectedRevision)) {
+  errors.push("REAPER_EXPECTED_REVISION or EXPECTED_SHA must name the exact reviewed commit.");
+} else if (metadata["org.opencontainers.image.revision"] !== expectedRevision) {
+  errors.push("Container revision label does not match the exact reviewed commit.");
+}
 
 const fileProbe = spawnSync(
   "docker",
@@ -36,8 +42,8 @@ const fileProbe = spawnSync(
     "run", "--rm", "--network", "none", "--read-only",
     "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=16m",
     "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
-    "--entrypoint", "node", image, "-e",
-    "const fs=require('node:fs');const top=fs.readdirSync('/opt/reaper').sort();if(process.getuid()===0||JSON.stringify(top)!==JSON.stringify(['dist','node_modules','package.json']))process.exit(2);",
+    "--entrypoint", "/nodejs/bin/node", image, "-e",
+    "const fs=require('node:fs');const path=require('node:path');const top=fs.readdirSync('/opt/reaper').sort();let native=false;function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,e.name);if(e.isDirectory())walk(p);else if(e.name.endsWith('.node'))native=true;}}walk('/opt/reaper');if(process.version!=='v22.23.2'||process.getuid()!==65532||native||fs.existsSync('/bin/sh')||fs.existsSync('/usr/local/bin/npm')||JSON.stringify(top)!==JSON.stringify(['dist','node_modules','package.json']))process.exit(2);",
   ],
   { encoding: "utf8" },
 );
@@ -49,7 +55,7 @@ const readinessProbe = spawnSync(
     "run", "--rm", "--network", "none", "--read-only",
     "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=16m",
     "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
-    "--entrypoint", "node", image, "dist/healthcheck.js",
+    "--entrypoint", "/nodejs/bin/node", image, "dist/healthcheck.js",
   ],
   { encoding: "utf8" },
 );

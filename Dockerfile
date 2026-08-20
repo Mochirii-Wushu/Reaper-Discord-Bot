@@ -1,17 +1,17 @@
 # syntax=docker/dockerfile:1.18@sha256:dabfc0969b935b2080555ace70ee69a5261af8a8f1b4df97b9e7fbcf6722eddf
 
-ARG BUN_IMAGE="oven/bun:1.3.14-slim@sha256:d56a2534ffd262e92c12fd3249d3924d296d97086da773f821d7d0477435ea04"
-ARG NODE_IMAGE="node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3"
+ARG BUN_IMAGE="oven/bun:1.3.14-distroless@sha256:c28c51287af70bab8e0b66fc4b6a30cfb92a727ebc88045223adc9f4c9d09307"
+ARG NODE_IMAGE="gcr.io/distroless/nodejs22-debian13:nonroot@sha256:939d6f1671529d230f50b563578e9b5d206af58f038b10ebd7e1233023d4e167"
 
 FROM ${BUN_IMAGE} AS development-dependencies
 WORKDIR /opt/reaper
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --ignore-scripts
+RUN ["/usr/local/bin/bun", "install", "--frozen-lockfile", "--ignore-scripts"]
 
 FROM ${BUN_IMAGE} AS production-dependencies
 WORKDIR /opt/reaper
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production --ignore-scripts
+RUN ["/usr/local/bin/bun", "install", "--frozen-lockfile", "--production", "--ignore-scripts"]
 
 FROM development-dependencies AS build
 ARG BUILD_DATE
@@ -19,13 +19,9 @@ ARG VERSION
 ARG VCS_REF
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
-RUN test -n "${BUILD_DATE}" \
-    && test -n "${VERSION}" \
-    && test -n "${VCS_REF}" \
-    && printf '%s' "${VCS_REF}" | grep -Eq '^[0-9a-f]{40}$' \
-    && bun run build \
-    && test -f dist/index.js \
-    && test -f dist/healthcheck.js
+RUN ["/usr/local/bin/bun", "-e", "for (const name of ['BUILD_DATE', 'VERSION']) { if (!process.env[name]) throw new Error(`${name} is required`); } if (!/^[0-9a-f]{40}$/.test(process.env.VCS_REF ?? '')) throw new Error('VCS_REF must be a full lowercase commit SHA');"]
+RUN ["/usr/local/bin/bun", "node_modules/typescript/bin/tsc", "-p", "tsconfig.build.json"]
+RUN ["/usr/local/bin/bun", "-e", "const { existsSync } = require('node:fs'); for (const path of ['dist/index.js', 'dist/healthcheck.js']) { if (!existsSync(path)) throw new Error(`${path} is missing`); }"]
 
 FROM ${NODE_IMAGE} AS runtime
 ARG BUILD_DATE
@@ -40,11 +36,11 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
 
 ENV NODE_ENV=production
 WORKDIR /opt/reaper
-COPY --from=production-dependencies --chown=node:node /opt/reaper/node_modules ./node_modules
-COPY --from=build --chown=node:node /opt/reaper/dist ./dist
-COPY --chown=node:node package.json ./package.json
+COPY --from=build --chown=65532:65532 /opt/reaper/dist ./dist
+COPY --from=production-dependencies --chown=65532:65532 /opt/reaper/node_modules ./node_modules
+COPY --chown=65532:65532 package.json ./package.json
 
-USER node
+USER 65532:65532
 STOPSIGNAL SIGTERM
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD ["node", "dist/healthcheck.js"]
-ENTRYPOINT ["node", "dist/index.js"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD ["/nodejs/bin/node", "dist/healthcheck.js"]
+ENTRYPOINT ["/nodejs/bin/node", "dist/index.js"]

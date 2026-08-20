@@ -14,12 +14,15 @@ forwarder.
 
 ## Reproducible build contract
 
-`Dockerfile` uses exact digests for its Dockerfile frontend and the
-multi-architecture Bun 1.3.14 and Node.js 22.23.1 images. The build installs the
-committed lockfile twice: once with
+`Dockerfile` uses exact digests for its Dockerfile frontend, the
+multi-architecture distroless Bun 1.3.14 builder, and the nonroot distroless Node.js
+22.23.2 Debian 13 runtime. The build installs the committed lockfile twice: once with
 development dependencies for TypeScript compilation and once with production
-dependencies only for the runtime. Lifecycle scripts are disabled. The final
-image contains only `dist`, production `node_modules`, and `package.json`.
+dependencies only for the runtime. Lifecycle scripts are disabled, and every
+builder command uses Bun's absolute executable with JSON-form `RUN`; no build
+stage contains a shell. The final
+image contains only the distroless runtime, `dist`, production `node_modules`,
+and `package.json`; it has no shell or package manager.
 
 An operator may build locally without publishing:
 
@@ -30,25 +33,43 @@ docker build \
   --build-arg VCS_REF="$(git rev-parse HEAD)" \
   --tag mochirii-reaper-gateway:local \
   .
+
+REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:local \
+REAPER_EXPECTED_REVISION="$(git rev-parse HEAD)" \
+bun run check:container
 ```
 
 The three OCI metadata arguments are mandatory. `VCS_REF` must be a full
-40-character commit SHA. Revalidate both base-image tags, digests, supported
-architectures, and current security advisories before any publication; a digest
-prevents silent drift but does not make an old base permanently safe.
+40-character commit SHA, and the runtime checker requires it to equal the
+separately supplied reviewed revision. Build only from a clean exact checkout.
+Revalidate every base-image tag, digest, supported
+architecture, and current security advisory before publication. Verify the
+distroless image's keyless signature using its documented issuer and identity.
+A digest prevents silent drift but does not make an old base permanently safe.
+
+Both dependency audit scopes are mandatory in CI and locally:
+
+```sh
+bun run audit:production
+bun run audit:complete
+```
+
+High and critical findings fail. The exact bounded exception contract and
+expiry policy are in `SECURITY.md` and
+`security/dependency-audit-exceptions.v1.json`.
 
 Pull-request CI checks out and verifies the exact reviewed head before building;
 it never labels a synthetic merge commit as the reviewed source.
 
 ## Runtime contract
 
-- Run as the image's `node` user; never override it with root.
+- Run as the image's numeric `65532:65532` nonroot user; never override it with root.
 - Use a read-only root filesystem, drop every Linux capability, and enable
   `no-new-privileges`.
 - Provide a small writable, memory-backed `/tmp` for the readiness file.
 - Do not publish a port. Reaper initiates an outbound Discord Gateway
   connection and has no inbound HTTP service.
-- Use `node dist/healthcheck.js` as an exec health/readiness probe.
+- Use `/nodejs/bin/node dist/healthcheck.js` as an exec health/readiness probe.
 - Send `SIGTERM` for shutdown. The worker removes readiness state and closes
   the Gateway client before exiting.
 - Inject runtime secrets from the later approved host secret manager. Do not
@@ -66,13 +87,16 @@ tmpfs /tmp = rw,noexec,nosuid,nodev,size=16m
 capabilities = []
 no_new_privileges = true
 restart = on-failure with bounded backoff
-healthcheck = node dist/healthcheck.js
+healthcheck = /nodejs/bin/node dist/healthcheck.js
 stop_signal = SIGTERM
 ```
 
 ## Publication gate
 
-No publication is authorized by this source packet. A later exact approval must
+No publication is authorized by this source packet. The final image must have
+zero unapproved critical or high vulnerability findings at the release scan;
+source dependency exceptions do not suppress final-image findings. A later
+exact approval must
 name the reviewed source commit and tree, target registry/repository, target
 platforms, build arguments, immutable output digest, SBOM, provenance
 attestation, retention policy, and signer/identity. BuildKit publication should

@@ -63,7 +63,7 @@ The public Discord command contract is:
 1. Install dependencies:
 
    ```sh
-   bun install
+   bun install --frozen-lockfile --ignore-scripts
    ```
 
 2. Create `.env.local` from `.env.example` and fill secret values locally or in the bot host secret manager. Never commit real values.
@@ -100,9 +100,13 @@ The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and op
 ## Validation
 
 ```sh
-bun install --frozen-lockfile
+bun install --frozen-lockfile --ignore-scripts
 bun run check
 ```
+
+`bun run check` audits both production dependencies and the complete dependency
+graph at high severity or above. The fail-closed exception schema, expiry rules,
+and maintenance cadence are documented in [`SECURITY.md`](SECURITY.md).
 
 The provider-neutral immutable container contract and its approval-gated build,
 publication, deployment, rollback, and workstation-independence procedures are
