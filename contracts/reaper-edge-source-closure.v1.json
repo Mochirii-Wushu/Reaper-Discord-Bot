@@ -9,7 +9,7 @@
   "framing": "rows ASCII-sorted by path; each row is status + NUL + path + NUL + mode + NUL + Git blob + NUL + lowercase SHA256(blob bytes) + LF",
   "fileCount": 118,
   "byteCount": 18612,
-  "sha256": "4f316dabc08876ee6aa9cf01122d95554d83c0adfe2a34314c79ff208dde9cb4",
+  "sha256": "3a94aaf2cb0770cab087e2feca18743e134712430c7b68a94a7465083d99e2c4",
   "entries": [
     {
       "status": "A",
@@ -39,8 +39,8 @@
       "status": "M",
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "blob": "7253fd9e99b2aa48221254ea9b4d208df2e65049",
-      "sha256": "b80cac17001e265d37eea72f072ef1579cdb8dfd2feb24191a95888d49b34ad2",
+      "blob": "d11edc24cbae8abd0416d9cf45b48e1d3b527668",
+      "sha256": "a07685d8402ce9d632eedffa7ab23097a214162218aa7ae2413ce49ce44f8933",
       "byteCount": 2262
     },
     {
