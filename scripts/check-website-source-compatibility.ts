@@ -1,381 +1,340 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { isAbsolute, posix, resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 
-type RuntimeContract = {
-  productionOwner: string;
-  sourceBaselineCommit: string;
-  sourceBaselineTree: string;
-  functions: Array<{
-    name: string;
-    verifyJwt: boolean;
-    authentication: string;
+type RelocationContract = {
+  predecessor: {
+    commit: string;
+    runtimeClosure: { fileCount: number; byteCount: number; sha256: string };
+    packagingClosure: { fileCount: number; byteCount: number; sha256: string };
+    functionConfig: {
+      functionCount: number;
+      byteCount: number;
+      sha256: string;
+    };
+  };
+  paths: Array<{
+    sourcePath: string;
+    sourceBlob: string;
+    sourceSha256: string;
   }>;
-  discordCommands: string[];
 };
 
-type ConsumerContract = {
-  producerOwner: string;
-  producerBaselineCommit: string;
-  producerBaselineTree: string;
-  producerFilePolicy: Record<string, boolean>;
-  databaseTables: string[];
-  databaseFunctions: string[];
-  websiteFunctionConsumers: Array<{
-    name: string;
-    authentication: string;
-    authenticationHeaders: string[];
-  }>;
-  websiteRouteConsumers: Array<{
-    path: string;
-    purpose: string;
+type WebsiteSourceReconciliation = {
+  schemaVersion: number;
+  contractId: string;
+  status: string;
+  websiteRepository: string;
+  predecessor: { commit: string; tree: string };
+  currentProtectedMain: { commit: string; tree: string };
+  mergeBase: string;
+  rowPolicy: Record<"identical" | "different" | "absent", string>;
+  paths: Array<{
     sourcePath: string;
+    currentProtectedMainBlob: string | null;
+    relationshipToPredecessor: "identical" | "different" | "absent";
+    disposition: string;
   }>;
+  unsealedInputs: Array<{
+    name: string;
+    status: string;
+    evidence: string;
+    requiredResolution: string;
+  }>;
+  activationBoundary: Record<string, boolean>;
 };
 
 const repositoryRoot = resolve(import.meta.dir, "..");
 const providedWebsiteRoot = String(
   process.argv[2] || process.env.MOCHIRII_WEBSITE_ROOT || "",
 ).trim();
-const websiteRoot = resolve(providedWebsiteRoot);
+const websiteRoot = resolve(providedWebsiteRoot || ".");
+const expectedTree = "ea5b564d7e1874706aa3ce948aeec38215d40821";
+const expectedCurrentProtectedMainCommit =
+  "7ca34ed96ef70f828ed542a052da90c4aa82ae4d";
+const expectedCurrentProtectedMainTree =
+  "568bb8f40867a01c2af0d29f26b0f38667332026";
+const expectedMergeBase = "2eec9e467b4679fd77648ef61e77cf246ec9589b";
+const functions = [
+  "publish-member-spotlight-winner",
+  "reaper-discord-interactions",
+  "reaper-discord-member-sync",
+  "reaper-spinner-dispatch",
+  "send-member-spotlight-poll",
+  "send-vote-reminder",
+] as const;
+const packagingPaths = [
+  ...functions.map((name) => `supabase/functions/${name}/deno.json`),
+  "supabase/functions/reaper-spinner-dispatch/deno.lock",
+].sort();
 
 function fail(message: string): never {
   throw new Error(message);
 }
 
+const websiteActivationBoundary = {
+  semanticMergeComplete: false,
+  singaporeInputAccepted: false,
+  lastBlossomInputAccepted: false,
+  singleWriterCutoverApproved: false,
+  providerMutationAuthorized: false,
+} as const;
+
+function exactRecord(
+  actual: unknown,
+  expected: Record<string, unknown>,
+): boolean {
+  if (!actual || typeof actual !== "object" || Array.isArray(actual)) {
+    return false;
+  }
+  const record = actual as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  const expectedKeys = Object.keys(expected).sort();
+  return JSON.stringify(keys) === JSON.stringify(expectedKeys) &&
+    expectedKeys.every((key) =>
+      JSON.stringify(record[key]) === JSON.stringify(expected[key])
+    );
+}
+
+const websiteBoundaryHostileMutants: unknown[] = [
+  {},
+  { ...websiteActivationBoundary, semanticMergeComplete: true },
+  { ...websiteActivationBoundary, singaporeInputAccepted: "" },
+  Object.fromEntries(Object.entries(websiteActivationBoundary).slice(1)),
+  { ...websiteActivationBoundary, unexpected: false },
+];
 if (
-  !providedWebsiteRoot ||
-  !isAbsolute(providedWebsiteRoot) ||
+  websiteBoundaryHostileMutants.some((value) =>
+    exactRecord(value, websiteActivationBoundary)
+  )
+) fail("Website activation-boundary hostile controls were not rejected.");
+
+if (
+  !providedWebsiteRoot || !isAbsolute(providedWebsiteRoot) ||
   !existsSync(resolve(websiteRoot, ".git"))
 ) {
-  fail("Provide the absolute Website worktree through an argument or MOCHIRII_WEBSITE_ROOT.");
+  fail(
+    "Provide an absolute Website worktree through an argument or MOCHIRII_WEBSITE_ROOT.",
+  );
 }
 
-async function repositoryJson<T>(path: string): Promise<T> {
-  return JSON.parse(await Bun.file(resolve(repositoryRoot, path)).text()) as T;
-}
+const relocation = JSON.parse(
+  await Bun.file(
+    resolve(repositoryRoot, "contracts/reaper-source-relocation.v1.json"),
+  ).text(),
+) as RelocationContract;
+const commit = relocation.predecessor.commit;
+const reconciliation = JSON.parse(
+  await Bun.file(
+    resolve(repositoryRoot, "contracts/website-source-reconciliation.v1.json"),
+  ).text(),
+) as WebsiteSourceReconciliation;
 
-function git(args: string[]): string {
+function gitText(args: string[]): string {
   return execFileSync("git", ["-C", websiteRoot, ...args], {
     encoding: "utf8",
     windowsHide: true,
-    maxBuffer: 16 * 1024 * 1024,
     stdio: ["ignore", "pipe", "pipe"],
   }).trim();
 }
 
-function gitFile(revision: string, path: string): string {
+function gitBytes(path: string): Buffer {
   try {
     return execFileSync(
       "git",
-      ["-C", websiteRoot, "show", `${revision}:${path}`],
+      ["-C", websiteRoot, "show", `${commit}:${path}`],
       {
-        encoding: "utf8",
+        encoding: "buffer",
         windowsHide: true,
-        maxBuffer: 16 * 1024 * 1024,
+        maxBuffer: 32 * 1024 * 1024,
+        stdio: ["ignore", "pipe", "pipe"],
       },
     );
   } catch {
-    fail(`Website source is missing ${path} at ${revision}.`);
+    fail(`Website predecessor is missing ${path}.`);
   }
 }
 
-function tryGitBlob(revision: string, path: string): string | null {
+function gitBlob(commitish: string, path: string): string | null {
   try {
-    return git(["rev-parse", `${revision}:${path}`]);
+    return gitText(["rev-parse", `${commitish}:${path}`]);
   } catch {
     return null;
   }
 }
 
-function gitBlob(revision: string, path: string): string {
-  return tryGitBlob(revision, path) ||
-    fail(`Website source is missing ${path} at ${revision}.`);
+function sha256(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex");
 }
 
-function sameSet(
-  actual: Iterable<string>,
-  expected: Iterable<string>,
-  label: string,
-): void {
-  const left = [...new Set(actual)].sort();
-  const right = [...new Set(expected)].sort();
-  if (JSON.stringify(left) !== JSON.stringify(right)) {
-    fail(`${label} mismatch: ${JSON.stringify(left)}`);
-  }
-}
-
-function regexEscape(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+function framedSeal(paths: string[], expectedRows?: Map<string, string>): {
+  byteCount: number;
+  sha256: string;
+} {
+  const rows = paths.sort().map((path) => {
+    const digest = sha256(gitBytes(path));
+    if (expectedRows && expectedRows.get(path) !== digest) {
+      fail(`Website predecessor content hash drifted for ${path}.`);
+    }
+    return Buffer.from(`${path}\0${digest}\n`, "utf8");
+  });
+  const framed = Buffer.concat(rows);
+  return { byteCount: framed.byteLength, sha256: sha256(framed) };
 }
 
 function configBlock(config: string, name: string): string {
   const heading = `[functions.${name}]`;
-  const headingIndex = config.indexOf(heading);
-  if (headingIndex < 0) return "";
-  const bodyIndex = config.indexOf("\n", headingIndex + heading.length);
-  if (bodyIndex < 0) return "";
-  const nextHeading = config.indexOf("\n[functions.", bodyIndex + 1);
-  return config.slice(
-    bodyIndex + 1,
-    nextHeading < 0 ? config.length : nextHeading,
-  ).trim();
+  const start = config.indexOf(heading);
+  if (start < 0) fail(`Website predecessor config is missing ${name}.`);
+  const bodyStart = config.indexOf("\n", start + heading.length);
+  const next = config.indexOf("\n[functions.", bodyStart + 1);
+  return config.slice(bodyStart + 1, next < 0 ? config.length : next);
 }
 
-function relativeImports(source: string): string[] {
-  const imports = new Set<string>();
-  for (
-    const match of source.matchAll(
-      /(?:\bfrom\s*|\bimport\s*)["'](\.\.?\/[^"']+)["']|\bimport\s*\(\s*["'](\.\.?\/[^"']+)["']\s*\)/gu,
-    )
+const resolvedCommit = gitText(["rev-parse", commit]);
+const resolvedTree = gitText(["rev-parse", `${commit}^{tree}`]);
+if (resolvedCommit !== commit || resolvedTree !== expectedTree) {
+  fail("Website predecessor commit/tree identity drifted.");
+}
+
+const runtimeRows = new Map(
+  relocation.paths.map(({ sourcePath, sourceBlob, sourceSha256 }) => {
+    const resolvedBlob = gitText(["rev-parse", `${commit}:${sourcePath}`]);
+    if (resolvedBlob !== sourceBlob) {
+      fail(`Website predecessor blob identity drifted for ${sourcePath}.`);
+    }
+    return [sourcePath, sourceSha256];
+  }),
+);
+if (runtimeRows.size !== relocation.predecessor.runtimeClosure.fileCount) {
+  fail("Runtime relocation row count drifted.");
+}
+const runtime = framedSeal([...runtimeRows.keys()], runtimeRows);
+if (
+  runtime.byteCount !== relocation.predecessor.runtimeClosure.byteCount ||
+  runtime.sha256 !== relocation.predecessor.runtimeClosure.sha256
+) fail("Website predecessor runtime closure seal drifted.");
+
+const packaging = framedSeal(packagingPaths);
+if (
+  packaging.byteCount !== relocation.predecessor.packagingClosure.byteCount ||
+  packaging.sha256 !== relocation.predecessor.packagingClosure.sha256
+) fail("Website predecessor packaging closure seal drifted.");
+
+const rawConfig = gitBytes("supabase/config.toml").toString("utf8");
+const canonicalConfig: Record<string, {
+  enabled: boolean;
+  verifyJwt: boolean;
+  importMap: string;
+}> = {};
+for (const name of [...functions].sort()) {
+  const block = configBlock(rawConfig, name);
+  const enabled = /^enabled\s*=\s*true\s*$/mu.test(block);
+  const verifyJwt = !/^verify_jwt\s*=\s*false\s*$/mu.test(block);
+  const importMap = block.match(/^import_map\s*=\s*"([^"]+)"\s*$/mu)?.[1] || "";
+  const expectedImportMap = `./functions/${name}/deno.json`;
+  if (!enabled || verifyJwt || importMap !== expectedImportMap) {
+    fail(`Website predecessor function config drifted for ${name}.`);
+  }
+  canonicalConfig[name] = { enabled, verifyJwt, importMap };
+}
+const configBytes = Buffer.from(JSON.stringify(canonicalConfig), "utf8");
+const configSeal = sha256(configBytes);
+if (
+  functions.length !== relocation.predecessor.functionConfig.functionCount ||
+  configBytes.byteLength !== relocation.predecessor.functionConfig.byteCount ||
+  configSeal !== relocation.predecessor.functionConfig.sha256
+) fail("Website predecessor function configuration seal drifted.");
+
+const currentProtectedMainCommit = gitText([
+  "rev-parse",
+  expectedCurrentProtectedMainCommit,
+]);
+const currentProtectedMainTree = gitText([
+  "rev-parse",
+  `${expectedCurrentProtectedMainCommit}^{tree}`,
+]);
+const mergeBase = gitText([
+  "merge-base",
+  commit,
+  expectedCurrentProtectedMainCommit,
+]);
+if (
+  reconciliation.schemaVersion !== 1 ||
+  reconciliation.contractId !== "website-source-reconciliation.v1" ||
+  reconciliation.status !== "reviewed-two-sided-inputs-activation-blocked" ||
+  reconciliation.websiteRepository !== "Mochirii-Wushu/Mochirii-Website" ||
+  reconciliation.predecessor.commit !== commit ||
+  reconciliation.predecessor.tree !== expectedTree ||
+  reconciliation.currentProtectedMain.commit !==
+    expectedCurrentProtectedMainCommit ||
+  reconciliation.currentProtectedMain.tree !==
+    expectedCurrentProtectedMainTree ||
+  reconciliation.mergeBase !== expectedMergeBase ||
+  currentProtectedMainCommit !== expectedCurrentProtectedMainCommit ||
+  currentProtectedMainTree !== expectedCurrentProtectedMainTree ||
+  mergeBase !== expectedMergeBase
+) fail("Website two-sided commit or tree identity drifted.");
+
+if (
+  reconciliation.rowPolicy.identical !== "accepted-identical-input" ||
+  reconciliation.rowPolicy.different !==
+    "activation-blocked-pending-semantic-merge" ||
+  reconciliation.rowPolicy.absent !==
+    "activation-blocked-input-absent-on-current-main" ||
+  reconciliation.paths.length !== relocation.paths.length ||
+  new Set(reconciliation.paths.map(({ sourcePath }) => sourcePath)).size !==
+    relocation.paths.length
+) fail("Website two-sided reconciliation inventory drifted.");
+
+const relocationByPath = new Map(
+  relocation.paths.map((row) => [row.sourcePath, row]),
+);
+const relationshipCounts = { identical: 0, different: 0, absent: 0 };
+for (const row of reconciliation.paths) {
+  const predecessor = relocationByPath.get(row.sourcePath);
+  if (!predecessor) {
+    fail(`Website reconciliation contains an unknown path: ${row.sourcePath}.`);
+  }
+  const currentBlob = gitBlob(
+    expectedCurrentProtectedMainCommit,
+    row.sourcePath,
+  );
+  const relationship = currentBlob === null
+    ? "absent"
+    : currentBlob === predecessor.sourceBlob
+    ? "identical"
+    : "different";
+  if (
+    currentBlob !== row.currentProtectedMainBlob ||
+    relationship !== row.relationshipToPredecessor ||
+    row.disposition !== reconciliation.rowPolicy[relationship]
   ) {
-    imports.add(match[1] || match[2]);
+    fail(`Website reconciliation drifted for ${row.sourcePath}.`);
   }
-  return [...imports];
+  relationshipCounts[relationship] += 1;
 }
-
-function dependencyPath(
-  revision: string,
-  importer: string,
-  specifier: string,
-): string {
-  const base = posix.normalize(posix.join(posix.dirname(importer), specifier));
-  for (const candidate of [base, `${base}.ts`, posix.join(base, "index.ts")]) {
-    if (tryGitBlob(revision, candidate)) return candidate;
-  }
-  fail(`Website relative import ${specifier} from ${importer} cannot be resolved.`);
-}
-
-function dependencyClosure(revision: string, entrypoints: string[]): Set<string> {
-  const files = new Set<string>();
-  const pending = [...entrypoints];
-  while (pending.length > 0) {
-    const path = pending.pop()!;
-    if (files.has(path)) continue;
-    files.add(path);
-    const source = gitFile(revision, path);
-    for (const specifier of relativeImports(source)) {
-      const dependency = dependencyPath(revision, path, specifier);
-      if (!files.has(dependency)) pending.push(dependency);
-    }
-  }
-  return files;
-}
-
-function assertFileParity(
-  baseline: string,
-  current: string,
-  paths: Iterable<string>,
-): void {
-  for (const path of paths) {
-    if (gitBlob(baseline, path) !== gitBlob(current, path)) {
-      fail(`Website producer file drifted from the reviewed contract: ${path}.`);
-    }
-  }
-}
-
-const runtime = await repositoryJson<RuntimeContract>(
-  "contracts/reaper-edge-runtime.v1.json",
-);
-const consumer = await repositoryJson<ConsumerContract>(
-  "contracts/website-supabase-consumer.v1.json",
-);
-const baseline = runtime.sourceBaselineCommit;
-const current = git(["rev-parse", "HEAD"]);
-const currentTree = git(["rev-parse", "HEAD^{tree}"]);
-const baselineTree = git(["rev-parse", `${baseline}^{tree}`]);
 if (
-  consumer.producerOwner !== runtime.productionOwner ||
-  consumer.producerBaselineCommit !== baseline ||
-  consumer.producerBaselineTree !== runtime.sourceBaselineTree ||
-  baselineTree !== runtime.sourceBaselineTree ||
-  Object.values(consumer.producerFilePolicy).some((value) => value !== true)
-) fail("Website producer provenance or file-parity policy is invalid.");
+  relationshipCounts.identical !== 13 ||
+  relationshipCounts.different !== 13 ||
+  relationshipCounts.absent !== 5
+) fail("Website reconciliation relationship counts drifted.");
 
-const functionsRoot = "supabase/functions";
-const producerFunctions = consumer.websiteFunctionConsumers.map(({ name }) => name);
-const allFunctionNames = [
-  ...runtime.functions.map(({ name }) => name),
-  ...producerFunctions,
-];
-const entrypoints = allFunctionNames.map((name) =>
-  `${functionsRoot}/${name}/index.ts`
-);
-const baselineClosure = dependencyClosure(baseline, entrypoints);
-const currentClosure = dependencyClosure(current, entrypoints);
-sameSet(currentClosure, baselineClosure, "Website function dependency closure");
-assertFileParity(baseline, current, currentClosure);
-
-const manifestPaths = allFunctionNames.flatMap((name) => {
-  const manifest = `${functionsRoot}/${name}/deno.json`;
-  const lock = `${functionsRoot}/${name}/deno.lock`;
-  const baselineHasLock = Boolean(tryGitBlob(baseline, lock));
-  const currentHasLock = Boolean(tryGitBlob(current, lock));
-  if (baselineHasLock !== currentHasLock) {
-    fail(`Website function lockfile presence drifted from the reviewed contract: ${name}.`);
-  }
-  return baselineHasLock ? [manifest, lock] : [manifest];
-});
-assertFileParity(baseline, current, manifestPaths);
-
-const baselineConfig = gitFile(baseline, "supabase/config.toml");
-const currentConfig = gitFile(current, "supabase/config.toml");
-for (const { name, verifyJwt } of runtime.functions) {
-  const baselineBlock = configBlock(baselineConfig, name);
-  const currentBlock = configBlock(currentConfig, name);
-  if (!baselineBlock || baselineBlock !== currentBlock) {
-    fail(`Website function config drifted from the reviewed contract: ${name}.`);
-  }
-  if (!new RegExp(`^verify_jwt = ${String(verifyJwt)}$`, "mu").test(currentBlock)) {
-    fail(`Website verify_jwt drifted for ${name}.`);
-  }
-}
-for (const name of producerFunctions) {
-  if (configBlock(baselineConfig, name) !== configBlock(currentConfig, name)) {
-    fail(`Website producer config drifted from the reviewed contract: ${name}.`);
-  }
-}
-
-for (const name of allFunctionNames) {
-  const deno = JSON.parse(
-    gitFile(current, `${functionsRoot}/${name}/deno.json`),
-  ) as { imports: Record<string, string> };
-  if (
-    deno.imports["@supabase/functions-js/edge-runtime.d.ts"] !==
-      "jsr:@supabase/functions-js@2.110.8/edge-runtime.d.ts" ||
-    deno.imports["@supabase/supabase-js"] !==
-      "npm:@supabase/supabase-js@2.110.8"
-  ) fail(`Website dependency policy drifted for ${name}.`);
-}
-
-const currentSource = [...currentClosure]
-  .map((path) => gitFile(current, path))
-  .join("\n");
-for (const table of consumer.databaseTables) {
-  if (!new RegExp(`\\.from\\(\\s*["']${regexEscape(table)}["']`, "u").test(currentSource)) {
-    fail(`Website no longer exposes the contracted table consumer ${table}.`);
-  }
-}
-for (const databaseFunction of consumer.databaseFunctions) {
-  if (!new RegExp(`\\.rpc\\(\\s*["']${regexEscape(databaseFunction)}["']`, "u").test(currentSource)) {
-    fail(`Website no longer exposes the contracted RPC ${databaseFunction}.`);
-  }
-}
-for (const producer of consumer.websiteFunctionConsumers) {
-  const producerSource = gitFile(
-    current,
-    `${functionsRoot}/${producer.name}/index.ts`,
-  );
-  for (const header of producer.authenticationHeaders) {
-    if (!producerSource.includes(header) && !currentSource.includes(header)) {
-      fail(`Website producer authentication header ${header} is missing.`);
-    }
-  }
-}
-
-const interactionSource = gitFile(
-  current,
-  `${functionsRoot}/reaper-discord-interactions/index.ts`,
-);
-const commandBlock = interactionSource.match(
-  /const commandName =[\s\S]*?if\s*\(\s*!\[\s*([\s\S]*?)\s*\]\.includes\(commandName\)\s*\)/u,
-)?.[1] || "";
-sameSet(
-  [...commandBlock.matchAll(/"([a-z-]+)"/gu)].map((match) => match[1]),
-  runtime.discordCommands,
-  "Website handled Discord commands",
-);
-const interactionHandler = interactionSource.slice(
-  interactionSource.indexOf("Deno.serve("),
-);
-const boundedBodyIndex = interactionHandler.indexOf(
-  "readBoundedUtf8RequestBody(",
-);
-const signatureIndex = interactionHandler.indexOf(
-  "verifyDiscordSignature(req, bodyResult.bytes, publicKey)",
-);
-const jsonRoutingIndex = interactionHandler.indexOf(
-  "JSON.parse(bodyResult.text)",
-);
+const unsealedInputNames = reconciliation.unsealedInputs.map(({ name }) => name)
+  .sort();
 if (
-  !interactionSource.includes(
-    "const MAX_DISCORD_INTERACTION_BODY_BYTES = 64 * 1024",
+  JSON.stringify(unsealedInputNames) !== JSON.stringify([
+      "Last Blossom behavior override",
+      "Singapore schedule override",
+    ]) ||
+  reconciliation.unsealedInputs.some((input) =>
+    input.status !== "activation-blocked-no-immutable-input" ||
+    !input.evidence || !input.requiredResolution
   ) ||
-  boundedBodyIndex < 0 ||
-  signatureIndex <= boundedBodyIndex ||
-  jsonRoutingIndex <= signatureIndex
-) {
-  fail(
-    "Website Discord interactions no longer bound and verify the exact body before JSON routing.",
-  );
-}
-
-for (const { name, authentication } of runtime.functions) {
-  const source = gitFile(current, `${functionsRoot}/${name}/index.ts`);
-  if (
-    authentication.includes("constant-time") &&
-    !source.includes("constantTimeSecretEqual(") &&
-    !source.includes("constantTimeEquals(")
-  ) fail(`${name} no longer performs its constant-time secret check.`);
-}
-
-const runtimeSource = runtime.functions
-  .map(({ name }) => gitFile(current, `${functionsRoot}/${name}/index.ts`))
-  .join("\n");
-for (const route of consumer.websiteRouteConsumers) {
-  gitBlob(current, route.sourcePath);
-  if (!runtimeSource.includes(route.path)) {
-    fail(`Website route consumer ${route.path} drifted from Reaper functions.`);
-  }
-  if (route.path === "spinner/media/render") {
-    assertFileParity(baseline, current, [route.sourcePath]);
-    const routeSource = gitFile(current, route.sourcePath);
-    for (const marker of [
-      "SPINNER_MEDIA_CAPABILITY_HEADER",
-      "reaper-spinner-dispatch",
-      "opaqueDenied",
-      "export async function POST",
-    ]) {
-      if (!routeSource.includes(marker)) {
-        fail(`Spinner media route contract is missing ${marker}.`);
-      }
-    }
-  }
-  if (route.path === "data/guild-schedule.json") {
-    const schedule = JSON.parse(gitFile(current, route.sourcePath)) as {
-      timezone?: { offsetMinutes?: number; displayLabel?: string };
-      monthly?: Record<string, { id?: string; startTime?: string; endTime?: string }>;
-      weekly?: Array<{ id?: string; startTime?: string; endTime?: string }>;
-    };
-    if (
-      schedule.timezone?.offsetMinutes !== 480 ||
-      schedule.timezone?.displayLabel !== "UTC+8" ||
-      !schedule.monthly ||
-      !Array.isArray(schedule.weekly) ||
-      Object.values(schedule.monthly).some((event) =>
-        !event.id || !event.startTime || !event.endTime
-      ) ||
-      schedule.weekly.some((event) => !event.id || !event.startTime || !event.endTime)
-    ) fail("Website guild schedule no longer satisfies the Reaper schedule contract.");
-  }
-}
-
-const relevantPaths = new Set([
-  ...currentClosure,
-  ...manifestPaths,
-  "supabase/config.toml",
-  ...consumer.websiteRouteConsumers.map(({ sourcePath }) => sourcePath),
-]);
-const dirtyRelevantPaths = git([
-  "status",
-  "--porcelain=v1",
-  "--",
-  ...relevantPaths,
-]);
-if (dirtyRelevantPaths) {
-  fail("Website contract files have uncommitted changes; use a sealed producer commit.");
-}
+  !exactRecord(reconciliation.activationBoundary, websiteActivationBoundary)
+) fail("Unsealed Website inputs must remain explicit activation blockers.");
 
 console.log(
-  `Website contract/file parity matches baseline ${baseline} (${currentClosure.size + manifestPaths.length + 3} reviewed files) at current ${current} tree ${currentTree}; unrelated Website tree changes are allowed.`,
+  `Reproduced Website predecessor ${commit} tree ${resolvedTree}: runtime ${runtimeRows.size}/${runtime.byteCount}/${runtime.sha256}, packaging ${packagingPaths.length}/${packaging.byteCount}/${packaging.sha256}, config ${functions.length}/${configBytes.byteLength}/${configSeal}; reconciled current protected main ${currentProtectedMainCommit} tree ${currentProtectedMainTree}: ${relationshipCounts.identical} identical, ${relationshipCounts.different} different/blocked, ${relationshipCounts.absent} absent/blocked.`,
 );

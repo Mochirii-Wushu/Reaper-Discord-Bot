@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "contractId": "discord-interaction-replay.v1",
+  "status": "schema-independent-interface-dormant-unbound",
+  "owner": "Mochirii-Wushu/Reaper-Discord-Bot",
+  "schemaOwner": "Mochirii-Wushu/Mochirii-Website",
+  "scope": "all non-PING Discord interactions before any mutation or deferred effect",
+  "claim": {
+    "key": "canonical Discord interaction ID",
+    "operation": "single atomic durable claim",
+    "outcomes": [
+      "acquired with an opaque fencing lease token",
+      "duplicate-complete",
+      "duplicate-in-flight",
+      "unavailable"
+    ],
+    "failure": "fail closed before effects"
+  },
+  "completion": {
+    "operation": "fenced durable completion using the exact acquired lease",
+    "falseOrError": "completion-uncertain; never automatically retry the effect",
+    "effectFailure": "retain the durable claim and record a sanitized failure without releasing it",
+    "waitUntilScheduling": "not replay completion; provider-backed durable enqueue and effect completion are required"
+  },
+  "requiredDurability": [
+    "survives process and host restart",
+    "claim and duplicate observation are atomic",
+    "lease fencing rejects stale completion",
+    "completed claims remain observable for the full Discord retry horizon",
+    "no local memory or workstation dependency",
+    "provider-backed durable enqueue, effect completion, and crash recovery are proven before activation"
+  ],
+  "providerBinding": null,
+  "databaseObject": null,
+  "migration": null,
+  "activationBoundary": {
+    "websiteSchemaAccepted": false,
+    "durableAdapterBound": false,
+    "duplicateRetryCrashEvidenceAccepted": false,
+    "providerBackedEnqueueEffectCrashProofAccepted": false,
+    "providerReadbackAccepted": false,
+    "mutatingInteractionsEnabled": false
+  }
+}

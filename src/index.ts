@@ -1,8 +1,8 @@
-import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
-import { loadConfig, loadGalleryConfig } from "./config.js";
+import { Client, Events, GatewayIntentBits } from "discord.js";
+import { loadConfig } from "./config.js";
 import { memberRolesChanged, syncPendingVerificationMember } from "./pending-verification.js";
 import { createRuntimeHealthReporter, type GatewayHealthStatus } from "./runtime-health.js";
-import { handleSubmitCommand } from "./submit.js";
+import { createGalleryGatewayInteractionHandler } from "./submit.js";
 import { sendWelcomeDm } from "./welcome.js";
 
 const config = loadConfig();
@@ -116,25 +116,10 @@ client.on(Events.GuildMemberUpdate, async (before, after) => {
   }
 });
 
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-  if (interaction.commandName !== "submit") return;
-
-  try {
-    await handleSubmitCommand(interaction, loadGalleryConfig());
-  } catch (error) {
-    console.error("Reaper gallery fallback is not configured.", {
-      error: errorName(error),
-    });
-
-    const message = "Gallery submission fallback is not configured on this Reaper runtime.";
-    if (interaction.deferred || interaction.replied) {
-      await interaction.editReply(message);
-    } else {
-      await interaction.reply({ content: message, flags: MessageFlags.Ephemeral });
-    }
-  }
-});
+client.on(
+  Events.InteractionCreate,
+  createGalleryGatewayInteractionHandler(config),
+);
 
 try {
   await client.login(config.discordBotToken);

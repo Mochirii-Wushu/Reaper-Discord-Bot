@@ -4,9 +4,12 @@ import { join, relative, resolve } from "node:path";
 import { SYNTHETIC_DISCORD_SNOWFLAKES } from "./discord-fixtures.js";
 
 const repositoryRoot = resolve(import.meta.dir, "..");
+const submitSource = readFileSync(join(repositoryRoot, "src", "submit.ts"), "utf8");
 const rootTextFiles = [
+  ".dockerignore",
   ".env.example",
   "AGENTS.md",
+  "Dockerfile",
   "package.json",
   "README.md",
   "tsconfig.build.json",
@@ -44,5 +47,14 @@ describe("tracked Discord identifier hygiene", () => {
     }
 
     expect(violations).toEqual([]);
+  });
+});
+
+describe("member-facing brand hygiene", () => {
+  test("uses the Mōchirīī gallery name in fallback replies", () => {
+    expect(submitSource).toContain(
+      'const message = "Mōchirīī gallery submissions are temporarily unavailable.";',
+    );
+    expect(submitSource).not.toContain("on this Reaper runtime");
   });
 });

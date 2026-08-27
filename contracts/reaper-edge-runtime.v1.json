@@ -1,10 +1,15 @@
 {
   "schemaVersion": 1,
-  "status": "website-owned-runtime-contract",
-  "productionOwner": "Mochirii-Wushu/Mochirii-Website",
-  "consumerRepository": "Mochirii-Wushu/Reaper-Discord-Bot",
-  "sourceBaselineCommit": "d571ec9764bd0eea696a67a117287c9b6452f301",
-  "sourceBaselineTree": "a6e3dbe9424e37697ceaa1c21d8e4f083ce65de9",
+  "status": "reaper-owned-source-candidate",
+  "sourceOwner": "Mochirii-Wushu/Reaper-Discord-Bot",
+  "currentProductionWriter": "Mochirii-Wushu/Mochirii-Website",
+  "predecessorCommit": "f587409adef29d4735b5e6ce8512c794579d8bef",
+  "predecessorTree": "ea5b564d7e1874706aa3ce948aeec38215d40821",
+  "predecessorSeals": {
+    "runtimeSha256": "1e53021abd065e452ca41a51b09fde71910f94241edc9fcbd4a4b0f42972159f",
+    "packagingSha256": "229775da6639d2e761403c2a251539c51f26334a30b798fd352f479abafbc2a9",
+    "configSha256": "4a167704256706b3b02c919f3d3727cd60f9ecc95b162c09544fb69a00d0f92b"
+  },
   "functions": [
     {
       "name": "reaper-discord-interactions",
@@ -14,27 +19,27 @@
     {
       "name": "reaper-discord-member-sync",
       "verifyJwt": false,
-      "authentication": "constant-time-shared-secret"
+      "authentication": "fixed-digest-strong-shared-secret"
     },
     {
       "name": "reaper-spinner-dispatch",
       "verifyJwt": false,
-      "authentication": "constant-time-shared-secret-or-scoped-media-capability"
+      "authentication": "fixed-digest-strong-shared-secret-or-scoped-media-capability"
     },
     {
       "name": "send-vote-reminder",
       "verifyJwt": false,
-      "authentication": "constant-time-cron-secret"
+      "authentication": "fixed-digest-strong-cron-secret"
     },
     {
       "name": "send-member-spotlight-poll",
       "verifyJwt": false,
-      "authentication": "constant-time-cron-secret"
+      "authentication": "fixed-digest-strong-cron-secret"
     },
     {
       "name": "publish-member-spotlight-winner",
       "verifyJwt": false,
-      "authentication": "constant-time-cron-secret"
+      "authentication": "fixed-digest-strong-cron-secret"
     }
   ],
   "discordCommands": [
@@ -49,9 +54,12 @@
     "photo-day-poll"
   ],
   "activationBoundary": {
-    "deployableFromThisRepository": false,
-    "copiedSupabaseSourceIncluded": false,
+    "sourcePresent": true,
+    "scopedDeploymentDefinitionIncluded": true,
+    "scopedDeploymentWorkflowIncluded": false,
     "providerConfigurationIncluded": false,
-    "schemaOrScheduleOwnershipTransferred": false
+    "schemaOrScheduleOwnershipTransferred": false,
+    "productionWriterCutoverApproved": false,
+    "productionActivated": false
   }
 }

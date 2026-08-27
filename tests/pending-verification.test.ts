@@ -10,6 +10,7 @@ import { SYNTHETIC_DISCORD_IDS } from "./discord-fixtures.js";
 const baseConfig: ReaperConfig = {
   discordBotToken: "test-token",
   discordGuildId: SYNTHETIC_DISCORD_IDS.guild,
+  galleryGatewayRollbackEnabled: false,
   welcomeDmEnabled: true,
   pendingVerificationSyncEnabled: true,
   pendingVerificationSyncUrl: "https://functions.example/reaper-discord-member-sync",

@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "severityThreshold": "high",
+  "maximumExceptionDays": 30,
+  "exceptions": []
+}

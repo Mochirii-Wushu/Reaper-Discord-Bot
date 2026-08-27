@@ -1,19 +1,23 @@
 # Reaper
 
-Private Reaper command and contract helper for Mōchirīī gallery submissions and Gateway-only member welcome DMs.
+Private Reaper runtime repository for Mōchirīī Discord automation and the
+Gateway-only member welcome worker.
 
-Production gallery submissions currently use the Supabase-hosted Discord Interactions webhook owned by the Website repository:
+Website remains the current production writer while this repository establishes
+the terminal source boundary for six Edge Functions. No cutover, provider
+change, or deployment is implied by this local source candidate.
 
 ```text
 ${SUPABASE_FUNCTIONS_URL}/reaper-discord-interactions
 ```
 
-This repository remains useful for guild command registration, contract tests, a rollback Gallery Gateway runtime reference, and the separate welcome-DM Gateway worker. Do not move slash-command production handling away from Supabase unless a later approved plan changes that architecture.
+Reaper also retains guild command registration, contract tests, a rollback
+Gallery Gateway reference, and the separate welcome-DM Gateway worker.
 
-## Website Edge Function Contract Consumer
+## Edge Function Source Ownership
 
-The Website repository is the only source and deployment owner for these six
-bot execution functions:
+Reaper is the terminal implementation, test, scoped-deployment, and operations
+owner for exactly these functions:
 
 - `reaper-discord-interactions`
 - `reaper-discord-member-sync`
@@ -22,27 +26,34 @@ bot execution functions:
 - `send-member-spotlight-poll`
 - `publish-member-spotlight-winner`
 
-Reaper contains no `supabase/` source or configuration and has no path that can
-deploy these functions. `contracts/reaper-edge-runtime.v1.json` records their
-six-function, nine-command, JWT, and application-authentication contract.
-`contracts/website-supabase-consumer.v1.json` records the database, RPC,
-Website-function, and Website-route consumer boundary.
+Website retains migrations, tables, RLS, grants, shared schema, schedules,
+generic Supabase configuration, `submit-discord-gallery-image`, shared
+identity/authorization, and the current production writer until an explicitly
+approved single-writer cutover. Reaper therefore contains only
+`supabase/functions`; it must not contain `supabase/config.toml`, migrations, or
+schedules.
 
-The current reviewed producer baseline is Website union commit
-`d571ec9764bd0eea696a67a117287c9b6452f301`, tree
-`a6e3dbe9424e37697ceaa1c21d8e4f083ce65de9`. The read-only compatibility
-check compares only the contracted function dependency closure, manifests,
-locks, relevant config blocks, and route contracts. Unrelated Website changes
-do not invalidate compatibility and no whole Website tree is copied here. See
-[`docs/website-edge-contract-consumer.md`](docs/website-edge-contract-consumer.md).
+The immutable Website predecessor is commit
+`f587409adef29d4735b5e6ce8512c794579d8bef`. Its exact 31-file runtime,
+seven-file packaging, and six-function configuration seals are recorded in
+[`contracts/reaper-source-relocation.v1.json`](contracts/reaper-source-relocation.v1.json).
+That manifest distinguishes the 18 safe Reaper-specific source files from the 13
+Website-shared interfaces/adapters and records uncommitted Website overrides as
+deferred inputs rather than importing them. See
+[`docs/reaper-edge-source-ownership.md`](docs/reaper-edge-source-ownership.md).
 
 ## Welcome DM Gateway Worker
 
-New-member welcome DMs require a persistent Discord Gateway connection because Discord member-join notifications are Gateway events, not Interactions webhooks. Supabase Edge Functions and Vercel Functions are not the right runtime for that long-running connection.
+New-member welcome DMs require a persistent Discord Gateway connection because
+Discord member-join notifications are Gateway events, not Interactions webhooks.
+Supabase Edge Functions and Vercel Functions are not the right runtime for that
+long-running connection.
 
-Enable Discord Developer Portal > Reaper > Bot > Privileged Gateway Intents > Server Members Intent before deploying this worker.
+Enable Discord Developer Portal > Reaper > Bot > Privileged Gateway Intents >
+Server Members Intent before deploying this worker.
 
-The worker listens for `guildMemberAdd`, ignores bots and other guilds, then sends this exact DM with mentions disabled:
+The worker listens for `guildMemberAdd`, ignores bots and other guilds, then
+sends this exact DM with mentions disabled:
 
 ```text
 Welcome to Mōchirīī pretty guildies!
@@ -56,23 +67,34 @@ Introduce yourself with your in-game guild title so we can add it to your role l
 Mōchirīī is constantly evolving, if you have any questions, get stuck, or feel a tiny bit lost in the clouds, please DM a Moderator anytime. We’re so excited to have you here!
 ```
 
-If a member blocks DMs, Reaper records a redacted warning and does not post a public fallback message.
+If a member blocks DMs, Reaper records a redacted warning and does not post a
+public fallback message.
 
 ## Pending Verification Forwarder
 
-Pending-verification forwarding is a second release and is disabled by default with:
+Pending-verification forwarding is a second release and is disabled by default
+with:
 
 ```text
 REAPER_PENDING_VERIFICATION_SYNC_ENABLED=false
 ```
 
-When approved and enabled, the Gateway worker posts `guildMemberAdd` and role-changing `guildMemberUpdate` events to the Mochirii Supabase Edge Function:
+When approved and enabled, the Gateway worker posts `guildMemberAdd` and
+role-changing `guildMemberUpdate` events to the Mochirii Supabase Edge Function:
 
 ```text
 ${REAPER_PENDING_VERIFICATION_SYNC_URL}
 ```
 
-The worker uses only `Guilds` and `GuildMembers` intents. It does not mutate Discord roles or channel permission overwrites directly and does not store Supabase service-role keys. The Edge Function owns the current-member fetch, conflict checks, max-mutation guard, tracked `VIEW_CHANNEL` overwrite writes, and redacted `discord_sync_log` entries. Retries reuse one byte-identical desired-state payload; the Edge Function re-fetches current member state before calculating changes, so a repeated delivery converges without duplicating an already-applied overwrite.
+The worker uses only `Guilds` and `GuildMembers` intents. It does not mutate
+Discord roles or channel permission overwrites directly and does not store
+Supabase service-role keys. The Edge Function owns the current-member fetch,
+conflict checks, max-mutation guard, tracked `VIEW_CHANNEL` overwrite writes,
+and fixed-schema aggregate-only `discord_sync_log` entries that never retain
+Discord user IDs, channel IDs, or channel names. Retries reuse one
+byte-identical desired-state payload; the Edge Function re-fetches current
+member state before calculating changes, so a repeated delivery converges
+without duplicating an already-applied overwrite.
 
 ## Current Contract
 
@@ -82,17 +104,32 @@ The public Discord command contract is:
 /submit image:<file> title:<title> subtitle:<subtitle> share_to_instagram:<true|false>
 ```
 
-`share_to_instagram` is optional and defaults to `false`. The Supabase-hosted interaction sends `instagramOptIn: true` only when the member explicitly selects true. Reaper does not publish to Instagram. The Mochirii website moderator workflow creates and publishes Instagram queue items after approval.
+`share_to_instagram` is optional and defaults to `false`. The Supabase-hosted
+interaction sends `instagramOptIn: true` only when the member explicitly selects
+true. Reaper does not publish to Instagram. The Mochirii website moderator
+workflow creates and publishes Instagram queue items after approval.
+
+The Gateway rollback client is compiled but inert by default. Only the exact
+value `REAPER_GALLERY_GATEWAY_ROLLBACK_ENABLED=true` permits guild-command
+registration or `/submit` handling, and the gate is checked before Gallery
+configuration, serialization, HMAC creation, or network access. It uses the
+same four-header, body-bound HMAC-SHA256 v1 wire contract as the Reaper-owned
+Edge signer and validates the exact fourteen-field payload before signing.
+This flag is necessary but never sufficient for production activation. Website
+remains the sole writer until a separately approved exact source/artifact,
+provider-normalization, compatibility, rollback, and single-writer readback
+packet succeeds. No source check or local flag changes provider state.
 
 ## Setup
 
 1. Install dependencies:
 
    ```sh
-   bun install
+   bun install --frozen-lockfile --ignore-scripts
    ```
 
-2. Create `.env.local` from `.env.example` and fill secret values locally or in the bot host secret manager. Never commit real values.
+2. Create `.env.local` from `.env.example` and fill secret values locally or in
+   the bot host secret manager. Never commit real values.
 
 3. Register the guild command:
 
@@ -117,15 +154,28 @@ The public Discord command contract is:
 - `REAPER_PENDING_VERIFICATION_SYNC_SECRET`
 - `REAPER_PENDING_VERIFICATION_SYNC_TIMEOUT_MS` (optional, defaults to `5000`)
 - `REAPER_PENDING_VERIFICATION_SYNC_MAX_ATTEMPTS` (optional, defaults to `2`)
+- `REAPER_GALLERY_GATEWAY_ROLLBACK_ENABLED` (optional, exact `true` only;
+  defaults to `false`)
 - `DISCORD_GALLERY_CHANNEL_ID`
+- `DISCORD_GALLERY_ATTACHMENT_ORIGINS`
+- `DISCORD_REQUIRED_ROLE_IDS` (exactly two canonical role IDs)
 - `SUPABASE_FUNCTIONS_URL`
-- `DISCORD_GALLERY_INGEST_SECRET`
+- `DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON`
+- `DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID`
 
-The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and optional `WELCOME_DM_ENABLED`. Gallery command registration and the rollback `/submit` Gateway fallback still require the other values. Website-owned Edge Function HMAC keys remain in the Website provider boundary and are never declared or stored here.
+The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and
+optional `WELCOME_DM_ENABLED`. Gallery command registration and the inactive
+rollback `/submit` Gateway reference require the explicit rollback gate, exact
+Discord authorization context, attachment-origin allowlist, and bounded HMAC
+key set. The
+Reaper-owned Edge signer selects the same versioned key contract at runtime;
+real values belong only in an approved server-side secret destination.
 
 ## Validation
 
 ```sh
+bun install --frozen-lockfile --ignore-scripts
+bun run check
 bun run typecheck
 bun test
 bun run build
@@ -134,10 +184,20 @@ MOCHIRII_WEBSITE_ROOT=/absolute/path/to/clean/Website bun run website:compat
 bun run audit:all
 ```
 
-`bun run check` includes the high/critical dependency threshold, source-only
-release contract, approved welcome-message hash, Gateway lifecycle contract,
-and Edge Function checks. See [`SECURITY.md`](SECURITY.md) and
+`audit:all` requires both the Bun advisory audit and pinned Deno advisory audits
+for all six tracked function lock graphs. The latter is CI/validation network
+access only; deployed Reaper runtime has no advisory-registry dependency.
+
+`bun run check` includes the complete dependency advisory inventory, source-only
+release contract, approved welcome-message hash, Gateway lifecycle contract, and
+Edge Function checks. See [`SECURITY.md`](SECURITY.md) and
 [`docs/dependency-security.md`](docs/dependency-security.md).
+
+The provider-neutral immutable OCI source contract is documented in
+[`docs/operations/GATEWAY-ARTIFACT.md`](docs/operations/GATEWAY-ARTIFACT.md).
+Source validation builds and inspects an image without authenticating to a
+registry; publication, host selection, deployment, and provider changes remain
+false release gates.
 
 ## Private runtime readiness
 
@@ -146,35 +206,55 @@ absolute host-owned file. The worker atomically records a provider-neutral
 readiness snapshot without account, guild, member, or credential values. A
 private supervisor probe uses `bun run health:check -- <absolute-path>`.
 
-The immutable-artifact, SBOM, provenance, restart, session-resume, rollback,
-and workstation-off gates are defined in
+The immutable-artifact, SBOM, provenance, restart, session-resume, rollback, and
+workstation-off gates are defined in
 [`contracts/gateway-release.v1.json`](contracts/gateway-release.v1.json) and
 [`docs/runtime-operations.md`](docs/runtime-operations.md). This repository
 still contains no deployment workflow and no runtime has been activated.
 
 ## Production Runtime
 
-- Primary slash-command runtime: Supabase Edge Function `reaper-discord-interactions`.
+- Primary slash-command runtime: Supabase Edge Function
+  `reaper-discord-interactions`.
 - Welcome DM runtime: persistent Gateway worker from this repo.
-- Discord Developer Portal Interactions Endpoint URL remains provider-managed and is not recorded in this repository.
+- Discord Developer Portal Interactions Endpoint URL remains provider-managed
+  and is not recorded in this repository.
 - Register guild commands before endpoint verification checks.
-- Keep Discord, Supabase, and Instagram secrets in Supabase secrets or local ignored files only.
-- Pending-verification forwarding uses bounded Edge Function attempts and per-attempt timeouts. Logs stay redacted and record only status labels, short snowflake suffixes, counts, and attempt numbers.
-- When forwarding is enabled, its target must be an absolute HTTPS URL without embedded credentials.
-- Retryable `408`, `429`, and `5xx` responses use bounded backoff. A valid `Retry-After` is honored only within the five-second retry-delay budget; a larger delay fails closed for a later Gateway event or operator retry.
-- A timed-out request is not retried because remote completion is unknown. A later Gateway event or operator reconciliation can safely converge current member state without overlapping the original request.
+- Keep Discord, Supabase, and Instagram secrets in Supabase secrets or local
+  ignored files only.
+- Pending-verification forwarding uses bounded Edge Function attempts and
+  per-attempt timeouts. Logs stay redacted and record only status labels, short
+  snowflake suffixes, counts, and attempt numbers.
+- When forwarding is enabled, its target must be an absolute HTTPS URL without
+  embedded credentials.
+- Retryable `408`, `429`, and `5xx` responses use bounded backoff. A valid
+  `Retry-After` is honored only within the five-second retry-delay budget; a
+  larger delay fails closed for a later Gateway event or operator retry.
+- A timed-out request is not retried because remote completion is unknown. A
+  later Gateway event or operator reconciliation can safely converge current
+  member state without overlapping the original request.
 
 ## Release Boundary
 
-- This source change does not enable pending-verification forwarding, deploy Reaper, change Discord or Supabase configuration, or send a Discord message.
-- Local and pull-request validation uses synthetic fixtures with no provider network calls. Green source tests do not prove that a production Gateway worker is running this revision.
-- Enabling the forwarder, publishing a runtime image, or changing a live worker requires a separately reviewed deployment packet with exact source, configuration, rollback, and live readback evidence.
-- Reaper is a contract-only consumer of the Website Edge Functions. Moving production ownership requires a successor architecture decision, an exact single-writer provider packet, a compatibility window, and rollback/readback evidence.
+- This source change does not enable pending-verification forwarding, deploy
+  Reaper, change Discord or Supabase configuration, or send a Discord message.
+- Local and pull-request validation uses synthetic fixtures with no provider
+  network calls. Green source tests do not prove that a production Gateway
+  worker is running this revision.
+- Enabling the forwarder, publishing a runtime image, or changing a live worker
+  requires a separately reviewed deployment packet with exact source,
+  configuration, rollback, and live readback evidence.
+- Reaper is the terminal source owner but is not yet the production writer.
+  Moving the live writer requires an exact single-writer provider packet, a
+  compatibility window, and rollback/readback evidence.
 
 ## Deployment Guardrails
 
-- Keep submissions restricted to the channel configured by `DISCORD_GALLERY_CHANNEL_ID`; never commit its production value.
-- Do not log tokens, ingest secrets, attachment signed URLs, or private payload bodies.
-- Do not grant Reaper Administrator, Message Content, Presences, or role-management permissions for the welcome DM worker.
+- Keep submissions restricted to the channel configured by
+  `DISCORD_GALLERY_CHANNEL_ID`; never commit its production value.
+- Do not log tokens, ingest secrets, attachment signed URLs, or private payload
+  bodies.
+- Do not grant Reaper Administrator, Message Content, Presences, or
+  role-management permissions for the welcome DM worker.
 - If a token or secret is exposed, rotate it before restarting production.
 - No real Instagram post is created by this repo or by Discord submission alone.

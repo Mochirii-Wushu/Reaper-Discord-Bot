@@ -1,4 +1,15 @@
 import { config as loadDotenv } from "dotenv";
+import {
+  canonicalDiscordGalleryRequiredRoleIds,
+  canonicalDiscordIdentifier,
+  createDiscordGalleryAuthorizationContext,
+  discordGalleryIngestActiveKey,
+  discordGalleryIngestEndpoint,
+  parseDiscordGalleryAttachmentOrigins,
+  parseDiscordGalleryIngestHmacKeys,
+  type DiscordGalleryAuthorizationContext,
+  type DiscordGalleryIngestHmacKeys,
+} from "./gallery-ingest-auth.js";
 
 if (process.env.NODE_ENV !== "production") {
   loadDotenv({ path: process.env.DOTENV_CONFIG_PATH || ".env.local" });
@@ -7,6 +18,7 @@ if (process.env.NODE_ENV !== "production") {
 export interface ReaperConfig {
   discordBotToken: string;
   discordGuildId: string;
+  galleryGatewayRollbackEnabled: boolean;
   welcomeDmEnabled: boolean;
   pendingVerificationSyncEnabled: boolean;
   pendingVerificationSyncUrl: string;
@@ -16,10 +28,15 @@ export interface ReaperConfig {
 }
 
 export interface GalleryConfig extends ReaperConfig {
+  galleryGatewayRollbackEnabled: true;
   discordApplicationId: string;
   discordGalleryChannelId: string;
+  discordGalleryAttachmentOrigins: readonly string[];
   supabaseFunctionsUrl: string;
-  discordGalleryIngestSecret: string;
+  discordGalleryIngestHmacKeys: DiscordGalleryIngestHmacKeys;
+  discordGalleryIngestHmacActiveKeyId: string;
+  discordGalleryRequiredRoleIds: readonly string[];
+  discordGalleryAuthorizationContext: DiscordGalleryAuthorizationContext;
 }
 
 function requireEnv(env: NodeJS.ProcessEnv, key: string): string {
@@ -34,6 +51,16 @@ function optionalBoolean(env: NodeJS.ProcessEnv, key: string, defaultValue: bool
   const value = String(env[key] || "").trim().toLowerCase();
   if (!value) return defaultValue;
   return ["1", "true", "yes", "on"].includes(value);
+}
+
+function exactDefaultFalseBoolean(
+  env: NodeJS.ProcessEnv,
+  key: string,
+): boolean {
+  const value = env[key];
+  if (value === undefined || value === "" || value === "false") return false;
+  if (value === "true") return true;
+  throw new Error(`${key} must be exactly true or false.`);
 }
 
 function optionalInteger(
@@ -69,6 +96,10 @@ function validatePendingVerificationSyncUrl(value: string): void {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
+  const galleryGatewayRollbackEnabled = exactDefaultFalseBoolean(
+    env,
+    "REAPER_GALLERY_GATEWAY_ROLLBACK_ENABLED",
+  );
   const pendingVerificationSyncEnabled = optionalBoolean(env, "REAPER_PENDING_VERIFICATION_SYNC_ENABLED", false);
   const pendingVerificationSyncUrl = String(env.REAPER_PENDING_VERIFICATION_SYNC_URL || "").trim().replace(/\/+$/, "");
   const pendingVerificationSyncSecret = String(env.REAPER_PENDING_VERIFICATION_SYNC_SECRET || "").trim();
@@ -95,6 +126,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
   return {
     discordBotToken: requireEnv(env, "DISCORD_BOT_TOKEN"),
     discordGuildId: requireEnv(env, "DISCORD_GUILD_ID"),
+    galleryGatewayRollbackEnabled,
     welcomeDmEnabled: optionalBoolean(env, "WELCOME_DM_ENABLED", true),
     pendingVerificationSyncEnabled,
     pendingVerificationSyncUrl,
@@ -105,11 +137,66 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
 }
 
 export function loadGalleryConfig(env: NodeJS.ProcessEnv = process.env): GalleryConfig {
+  const reaperConfig = loadConfig(env);
+  if (!reaperConfig.galleryGatewayRollbackEnabled) {
+    throw new Error("Reaper Gallery Gateway rollback is disabled.");
+  }
+  const discordGuildId = canonicalDiscordIdentifier(env.DISCORD_GUILD_ID);
+  const discordApplicationId = canonicalDiscordIdentifier(
+    env.DISCORD_APPLICATION_ID,
+  );
+  const discordGalleryChannelId = canonicalDiscordIdentifier(
+    env.DISCORD_GALLERY_CHANNEL_ID,
+  );
+  const discordGalleryAttachmentOrigins = parseDiscordGalleryAttachmentOrigins(
+    env.DISCORD_GALLERY_ATTACHMENT_ORIGINS,
+  );
+  const discordGalleryRequiredRoleIds =
+    canonicalDiscordGalleryRequiredRoleIds(env.DISCORD_REQUIRED_ROLE_IDS);
+  const discordGalleryAuthorizationContext =
+    discordGuildId && discordGalleryChannelId && discordGalleryRequiredRoleIds
+      ? createDiscordGalleryAuthorizationContext({
+        guildId: discordGuildId,
+        galleryChannelId: discordGalleryChannelId,
+        requiredRoleIds: discordGalleryRequiredRoleIds,
+      })
+      : null;
+  if (
+    !discordGuildId || !discordApplicationId || !discordGalleryChannelId ||
+    !discordGalleryAttachmentOrigins || !discordGalleryRequiredRoleIds ||
+    !discordGalleryAuthorizationContext
+  ) {
+    throw new Error("Discord Gallery authorization configuration is invalid.");
+  }
+  const supabaseFunctionsUrl = requireEnv(env, "SUPABASE_FUNCTIONS_URL")
+    .replace(/\/+$/u, "");
+  discordGalleryIngestEndpoint(supabaseFunctionsUrl);
+  const discordGalleryIngestHmacKeys = parseDiscordGalleryIngestHmacKeys(
+    requireEnv(env, "DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON"),
+  );
+  const discordGalleryIngestHmacActiveKeyId = requireEnv(
+    env,
+    "DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID",
+  );
+  if (
+    !discordGalleryIngestHmacKeys ||
+    !discordGalleryIngestActiveKey(
+      discordGalleryIngestHmacKeys,
+      discordGalleryIngestHmacActiveKeyId,
+    )
+  ) throw new Error("Discord Gallery ingest HMAC configuration is invalid.");
+
   return {
-    ...loadConfig(env),
-    discordApplicationId: requireEnv(env, "DISCORD_APPLICATION_ID"),
-    discordGalleryChannelId: requireEnv(env, "DISCORD_GALLERY_CHANNEL_ID"),
-    supabaseFunctionsUrl: requireEnv(env, "SUPABASE_FUNCTIONS_URL").replace(/\/+$/, ""),
-    discordGalleryIngestSecret: requireEnv(env, "DISCORD_GALLERY_INGEST_SECRET"),
+    ...reaperConfig,
+    galleryGatewayRollbackEnabled: true,
+    discordGuildId,
+    discordApplicationId,
+    discordGalleryChannelId,
+    discordGalleryAttachmentOrigins,
+    supabaseFunctionsUrl,
+    discordGalleryIngestHmacKeys,
+    discordGalleryIngestHmacActiveKeyId,
+    discordGalleryRequiredRoleIds,
+    discordGalleryAuthorizationContext,
   };
 }

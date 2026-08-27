@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 1,
+  "contractId": "website-source-reconciliation.v1",
+  "status": "reviewed-two-sided-inputs-activation-blocked",
+  "websiteRepository": "Mochirii-Wushu/Mochirii-Website",
+  "predecessor": {
+    "commit": "f587409adef29d4735b5e6ce8512c794579d8bef",
+    "tree": "ea5b564d7e1874706aa3ce948aeec38215d40821"
+  },
+  "currentProtectedMain": {
+    "commit": "7ca34ed96ef70f828ed542a052da90c4aa82ae4d",
+    "tree": "568bb8f40867a01c2af0d29f26b0f38667332026"
+  },
+  "mergeBase": "2eec9e467b4679fd77648ef61e77cf246ec9589b",
+  "rowPolicy": {
+    "identical": "accepted-identical-input",
+    "different": "activation-blocked-pending-semantic-merge",
+    "absent": "activation-blocked-input-absent-on-current-main"
+  },
+  "paths": [
+    {
+      "sourcePath": "supabase/functions/_shared/bounded-request-body.ts",
+      "currentProtectedMainBlob": null,
+      "relationshipToPredecessor": "absent",
+      "disposition": "activation-blocked-input-absent-on-current-main"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/cors.ts",
+      "currentProtectedMainBlob": "2d63c9b4dca33241d77d02837a4a95ba46fda087",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/discord-api.ts",
+      "currentProtectedMainBlob": "92cc24e2b52b6c3f79509ccabb8bc55261a1d4cf",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/discord-gallery-ingest-auth.ts",
+      "currentProtectedMainBlob": null,
+      "relationshipToPredecessor": "absent",
+      "disposition": "activation-blocked-input-absent-on-current-main"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/discord-interaction-helpers.ts",
+      "currentProtectedMainBlob": "2c4d14b2884747a2d724b80cb6c1fc791e8feec4",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/discord-signature.ts",
+      "currentProtectedMainBlob": "ea360efc78165a609e8a98319f04375da9e947e0",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/gallery-source-image.ts",
+      "currentProtectedMainBlob": null,
+      "relationshipToPredecessor": "absent",
+      "disposition": "activation-blocked-input-absent-on-current-main"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/modmail-audit.ts",
+      "currentProtectedMainBlob": "f73a53ebdbcdfadded203dff1bb2885e0f7748fc",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/outbound-http.ts",
+      "currentProtectedMainBlob": null,
+      "relationshipToPredecessor": "absent",
+      "disposition": "activation-blocked-input-absent-on-current-main"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/pending-verification-containment.ts",
+      "currentProtectedMainBlob": "1b9498f4bb33bd650f2831597898169b9d6c4ccd",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/photo-day-polls.ts",
+      "currentProtectedMainBlob": "0e88c9c46deaf03cebfa22063bfaabf0b4ac080c",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/public-origins.ts",
+      "currentProtectedMainBlob": "fa57a64db26ec96edb4ca685fc2e3f62ed00fac4",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/reaper-discord-events.ts",
+      "currentProtectedMainBlob": "46092bbb4e372ecf93bbe51560765a0951463599",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/reaper-event-sync-workflow.ts",
+      "currentProtectedMainBlob": "220a2beac88a4283e67857824154a606fd24dd6e",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/reaper-photo-day-poll-workflow.ts",
+      "currentProtectedMainBlob": "0d8b76b9c30dc306a92b2dd62d261c2a300cd482",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/reaper-rank-sync-workflow.ts",
+      "currentProtectedMainBlob": "8e84a294a2f7bcb93967864a5bdd5bd86dd7686a",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/reaper-vote-interactions.ts",
+      "currentProtectedMainBlob": "db4454727acdc76b6ddb373fa4a2007d23aed3bc",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/secret-auth.ts",
+      "currentProtectedMainBlob": null,
+      "relationshipToPredecessor": "absent",
+      "disposition": "activation-blocked-input-absent-on-current-main"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/spinner-discord-outbox.ts",
+      "currentProtectedMainBlob": "76d1e40020fc6124ce86789b5ae03ac6220adbcb",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/spinner-live.ts",
+      "currentProtectedMainBlob": "d17eb36847e9ba9d921f7da744b3e4c2c77cc92a",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/spinner-media-dispatch.ts",
+      "currentProtectedMainBlob": "b88aa77744528da4e4e84c4e3115ee483124d5ab",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/spinner-media.ts",
+      "currentProtectedMainBlob": "66914cefe091f4094afb7fae6f0643505f93a1ec",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/spotlight-polls.ts",
+      "currentProtectedMainBlob": "8fb621506cdc43ce920b7dfef4f73d829a61100b",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/supabase-service-role.ts",
+      "currentProtectedMainBlob": "7438b33ab1c808d784196a24e9601967cd65490c",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/vote-reminders.ts",
+      "currentProtectedMainBlob": "38500e8cd7261f237e7b1de3bffb4fcdd8ef97a9",
+      "relationshipToPredecessor": "identical",
+      "disposition": "accepted-identical-input"
+    },
+    {
+      "sourcePath": "supabase/functions/publish-member-spotlight-winner/index.ts",
+      "currentProtectedMainBlob": "7fd77cbf77076c3ed245111480fc89d3ba3b3a7a",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/reaper-discord-interactions/index.ts",
+      "currentProtectedMainBlob": "931c9f490faf56e9ccb3ec6cb91cec07c28b614d",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/reaper-discord-member-sync/index.ts",
+      "currentProtectedMainBlob": "a653e57014cd3549e53e56083fcfe7a6fc5b6357",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/reaper-spinner-dispatch/index.ts",
+      "currentProtectedMainBlob": "bb905d6fba78a7d7af53f771d7a2f2a5260cfa69",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/send-member-spotlight-poll/index.ts",
+      "currentProtectedMainBlob": "e484268eded0ef8cc9c052f414a9bf4ff7117780",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    },
+    {
+      "sourcePath": "supabase/functions/send-vote-reminder/index.ts",
+      "currentProtectedMainBlob": "3f28d1c12604217dce4a9197f0c3334d629b5527",
+      "relationshipToPredecessor": "different",
+      "disposition": "activation-blocked-pending-semantic-merge"
+    }
+  ],
+  "unsealedInputs": [
+    {
+      "name": "Singapore schedule override",
+      "status": "activation-blocked-no-immutable-input",
+      "evidence": "not present as a reviewed relocation input in either immutable commit",
+      "requiredResolution": "versioned schedule contract plus coherent fixtures and two-sided source review"
+    },
+    {
+      "name": "Last Blossom behavior override",
+      "status": "activation-blocked-no-immutable-input",
+      "evidence": "not present as a reviewed relocation input in either immutable commit",
+      "requiredResolution": "versioned behavior contract plus coherent fixtures and two-sided source review"
+    }
+  ],
+  "activationBoundary": {
+    "semanticMergeComplete": false,
+    "singaporeInputAccepted": false,
+    "lastBlossomInputAccepted": false,
+    "singleWriterCutoverApproved": false,
+    "providerMutationAuthorized": false
+  }
+}
