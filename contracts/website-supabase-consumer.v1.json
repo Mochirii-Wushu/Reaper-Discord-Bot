@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "status": "website-retained-shared-consumer-contract",
+  "functionSourceOwner": "Mochirii-Wushu/Reaper-Discord-Bot",
+  "sharedProducerOwner": "Mochirii-Wushu/Mochirii-Website",
+  "currentProductionWriter": "Mochirii-Wushu/Mochirii-Website",
+  "predecessorCommit": "f587409adef29d4735b5e6ce8512c794579d8bef",
+  "predecessorTree": "ea5b564d7e1874706aa3ce948aeec38215d40821",
+  "databaseTables": [
+    "discord_managed_permission_overwrites",
+    "discord_resources",
+    "discord_sync_log",
+    "member_profiles",
+    "spotlight_poll_candidates",
+    "spotlight_poll_cycles",
+    "spotlight_poll_results",
+    "vote_confirmations",
+    "vote_reminder_sends"
+  ],
+  "databaseFunctions": [
+    "spinner_authorize_media_manifest",
+    "spinner_bind_media_capability",
+    "spinner_claim_discord_outbox",
+    "spinner_claim_media_jobs",
+    "spinner_finish_discord_outbox_claim",
+    "spinner_finish_media_attachment",
+    "spinner_reserve_media_attachment"
+  ],
+  "websiteFunctionConsumers": [
+    {
+      "name": "submit-discord-gallery-image",
+      "authentication": "body-bound-hmac-sha256-v1",
+      "authenticationHeaders": [
+        "x-mochirii-gallery-key-id",
+        "x-mochirii-gallery-timestamp",
+        "x-mochirii-gallery-nonce",
+        "x-mochirii-gallery-signature"
+      ],
+      "authorizationContextContract": "discord-gallery-authorization-context.v1",
+      "requestPayload": {
+        "requiredKeys": [
+          "guildId",
+          "channelId",
+          "messageId",
+          "attachmentId",
+          "discordUserId",
+          "attachmentUrl",
+          "mimeType",
+          "sizeBytes",
+          "originalFilename",
+          "title",
+          "caption",
+          "instagramOptIn",
+          "authorizationContextVersion",
+          "authorizationContextSha256"
+        ],
+        "unknownOrMissingKeys": "reject",
+        "forbiddenDecodedCodePoints": [
+          "U+FEFF"
+        ],
+        "identifiers": "canonical-positive-uint64-decimal-16-to-20-digits",
+        "attachmentUrl": "exact-normalized-allowlisted-discord-https-url-bound-to-channel-and-attachment-ids",
+        "mimeTypes": [
+          "image/jpeg",
+          "image/png",
+          "image/webp"
+        ],
+        "sizeBytes": {
+          "type": "safe-integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "originalFilename": {
+          "type": "exact-trim-stable-nonempty-string",
+          "maximumLength": 255,
+          "extensionMustMatchMime": true
+        },
+        "title": {
+          "type": "explicit-null-or-exact-trim-stable-nonempty-string",
+          "maximumLength": 80
+        },
+        "caption": {
+          "type": "explicit-null-or-exact-trim-stable-nonempty-string",
+          "maximumLength": 300
+        },
+        "instagramOptIn": "boolean",
+        "authorizationContextFields": "exact-discord-gallery-authorization-context.v1"
+      },
+      "verifierOwner": "Mochirii-Wushu/Mochirii-Website",
+      "signerOwner": "Mochirii-Wushu/Reaper-Discord-Bot"
+    }
+  ],
+  "websiteRouteConsumers": [
+    {
+      "path": "data/guild-schedule.json",
+      "purpose": "discord-event-schedule",
+      "sourcePath": "apps/web/public/data/guild-schedule.json"
+    },
+    {
+      "path": "spinner/media/render",
+      "purpose": "spinner-media-render",
+      "sourcePath": "apps/web/app/spinner/media/render/route.ts"
+    }
+  ],
+  "retainedByWebsite": [
+    "migrations",
+    "database-schema",
+    "row-level-security",
+    "grants",
+    "schedules",
+    "submit-discord-gallery-image",
+    "shared-identity-and-authorization",
+    "generic-project-config",
+    "current-production-writer-until-approved-cutover"
+  ]
+}

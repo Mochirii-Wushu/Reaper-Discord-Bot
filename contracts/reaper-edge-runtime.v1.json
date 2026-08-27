@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "status": "reaper-owned-source-candidate",
+  "sourceOwner": "Mochirii-Wushu/Reaper-Discord-Bot",
+  "currentProductionWriter": "Mochirii-Wushu/Mochirii-Website",
+  "predecessorCommit": "f587409adef29d4735b5e6ce8512c794579d8bef",
+  "predecessorTree": "ea5b564d7e1874706aa3ce948aeec38215d40821",
+  "predecessorSeals": {
+    "runtimeSha256": "1e53021abd065e452ca41a51b09fde71910f94241edc9fcbd4a4b0f42972159f",
+    "packagingSha256": "229775da6639d2e761403c2a251539c51f26334a30b798fd352f479abafbc2a9",
+    "configSha256": "4a167704256706b3b02c919f3d3727cd60f9ecc95b162c09544fb69a00d0f92b"
+  },
+  "functions": [
+    {
+      "name": "reaper-discord-interactions",
+      "verifyJwt": false,
+      "authentication": "discord-ed25519-signature"
+    },
+    {
+      "name": "reaper-discord-member-sync",
+      "verifyJwt": false,
+      "authentication": "fixed-digest-strong-shared-secret"
+    },
+    {
+      "name": "reaper-spinner-dispatch",
+      "verifyJwt": false,
+      "authentication": "fixed-digest-strong-shared-secret-or-scoped-media-capability"
+    },
+    {
+      "name": "send-vote-reminder",
+      "verifyJwt": false,
+      "authentication": "fixed-digest-strong-cron-secret"
+    },
+    {
+      "name": "send-member-spotlight-poll",
+      "verifyJwt": false,
+      "authentication": "fixed-digest-strong-cron-secret"
+    },
+    {
+      "name": "publish-member-spotlight-winner",
+      "verifyJwt": false,
+      "authentication": "fixed-digest-strong-cron-secret"
+    }
+  ],
+  "discordCommands": [
+    "submit",
+    "sync-ranks",
+    "sync-events",
+    "sync-pending-verification",
+    "audit-modmail",
+    "vote-status",
+    "vote-leaderboard",
+    "vote-reminder-preview",
+    "photo-day-poll"
+  ],
+  "activationBoundary": {
+    "sourcePresent": true,
+    "scopedDeploymentDefinitionIncluded": true,
+    "scopedDeploymentWorkflowIncluded": false,
+    "providerConfigurationIncluded": false,
+    "schemaOrScheduleOwnershipTransferred": false,
+    "productionWriterCutoverApproved": false,
+    "productionActivated": false
+  }
+}

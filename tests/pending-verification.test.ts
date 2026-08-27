@@ -10,9 +10,10 @@ import { SYNTHETIC_DISCORD_IDS } from "./discord-fixtures.js";
 const baseConfig: ReaperConfig = {
   discordBotToken: "test-token",
   discordGuildId: SYNTHETIC_DISCORD_IDS.guild,
+  galleryGatewayRollbackEnabled: false,
   welcomeDmEnabled: true,
   pendingVerificationSyncEnabled: true,
-  pendingVerificationSyncUrl: "https://deyvmtncimmcinldjyqe.supabase.co/functions/v1/reaper-discord-member-sync",
+  pendingVerificationSyncUrl: "https://functions.example/reaper-discord-member-sync",
   pendingVerificationSyncSecret: "local-sync-secret",
   pendingVerificationSyncTimeoutMs: 5000,
   pendingVerificationSyncMaxAttempts: 2,

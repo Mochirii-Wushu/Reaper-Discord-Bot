@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "contractId": "discord-gallery-ingest-hmac.v1",
+  "status": "active-source-contract-not-deployed",
+  "signerOwner": "Mochirii-Wushu/Reaper-Discord-Bot",
+  "verifierOwner": "Mochirii-Wushu/Mochirii-Website",
+  "verifierFunction": "submit-discord-gallery-image",
+  "wire": {
+    "method": "POST",
+    "path": "/functions/v1/submit-discord-gallery-image",
+    "pathSemantics": {
+      "signerValue": "constant-reviewed-pathname",
+      "verifierValue": "runtime-normalized-whatwg-url-pathname",
+      "requireExactPathname": "/functions/v1/submit-discord-gallery-image",
+      "requireEmptySearch": true,
+      "requireEmptyHash": true,
+      "requireEmptyUsername": true,
+      "requireEmptyPassword": true,
+      "requireAllowedRuntimeOriginAndPort": true,
+      "rawRequestTargetBound": false,
+      "rawRequestTargetVisibleToVerifier": false
+    },
+    "bodySemantics": {
+      "digestInput": "exact-bounded-request-body-bytes",
+      "decodeOrNormalizeBeforeDigest": false,
+      "utf8BomAccepted": false
+    },
+    "canonicalFields": [
+      "v1",
+      "keyId",
+      "uppercaseMethod",
+      "runtimeNormalizedWhatwgPathname",
+      "unixTimestampSeconds",
+      "nonceLowerHex",
+      "lowercaseSha256OfExactBoundedRequestBodyBytes"
+    ],
+    "canonicalSeparator": "LF",
+    "signature": "lowercase-hmac-sha256",
+    "signaturePrefix": "v1="
+  },
+  "headers": [
+    "x-mochirii-gallery-key-id",
+    "x-mochirii-gallery-timestamp",
+    "x-mochirii-gallery-nonce",
+    "x-mochirii-gallery-signature"
+  ],
+  "limits": {
+    "maximumBodyBytes": 16384,
+    "maximumClockSkewSeconds": 60,
+    "minimumKeyBytes": 32,
+    "maximumKeyBytes": 128,
+    "maximumKeyCount": 3,
+    "nonceBytes": 16
+  },
+  "replay": {
+    "consumeAfterSignatureVerification": true,
+    "oneUsePerKeyIdAndNonce": true,
+    "storageFailureMode": "fail-closed-503"
+  },
+  "activationLimitation": {
+    "edgeVerifierCannotRecoverRawHttpRequestTarget": true,
+    "gatewayNormalizationRequiresPrivateActivationManifestAndProviderReadback": true
+  },
+  "ownershipBoundary": {
+    "reaperContainsSignerAndActiveKeySelection": true,
+    "reaperContainsProductionVerifier": false,
+    "websiteRetainsVerifierAndNonceStore": true
+  }
+}
