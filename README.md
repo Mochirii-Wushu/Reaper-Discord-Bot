@@ -1,19 +1,23 @@
 # Reaper
 
-Private Reaper command and contract helper for Mōchirīī gallery submissions and Gateway-only member welcome DMs.
+Private Reaper runtime repository for Mōchirīī Discord automation and the
+Gateway-only member welcome worker.
 
-Production gallery submissions currently use the Supabase-hosted Discord Interactions webhook owned by the Website repository:
+Website remains the current production writer while this repository establishes
+the terminal source boundary for six Edge Functions. No cutover, provider
+change, or deployment is implied by this local source candidate.
 
 ```text
 ${SUPABASE_FUNCTIONS_URL}/reaper-discord-interactions
 ```
 
-This repository remains useful for guild command registration, contract tests, a rollback Gallery Gateway runtime reference, and the separate welcome-DM Gateway worker. Do not move slash-command production handling away from Supabase unless a later approved plan changes that architecture.
+Reaper also retains guild command registration, contract tests, a rollback
+Gallery Gateway reference, and the separate welcome-DM Gateway worker.
 
-## Website Edge Function Contract Consumer
+## Edge Function Source Ownership
 
-The Website repository is the only source and deployment owner for these six
-bot execution functions:
+Reaper is the terminal implementation, test, scoped-deployment, and operations
+owner for exactly these functions:
 
 - `reaper-discord-interactions`
 - `reaper-discord-member-sync`
@@ -22,19 +26,21 @@ bot execution functions:
 - `send-member-spotlight-poll`
 - `publish-member-spotlight-winner`
 
-Reaper contains no `supabase/` source or configuration and has no path that can
-deploy these functions. `contracts/reaper-edge-runtime.v1.json` records their
-six-function, nine-command, JWT, and application-authentication contract.
-`contracts/website-supabase-consumer.v1.json` records the database, RPC,
-Website-function, and Website-route consumer boundary.
+Website retains migrations, tables, RLS, grants, shared schema, schedules,
+generic Supabase configuration, `submit-discord-gallery-image`, shared
+identity/authorization, and the current production writer until an explicitly
+approved single-writer cutover. Reaper therefore contains only
+`supabase/functions`; it must not contain `supabase/config.toml`, migrations,
+or schedules.
 
-The current reviewed producer baseline is Website union commit
-`d571ec9764bd0eea696a67a117287c9b6452f301`, tree
-`a6e3dbe9424e37697ceaa1c21d8e4f083ce65de9`. The read-only compatibility
-check compares only the contracted function dependency closure, manifests,
-locks, relevant config blocks, and route contracts. Unrelated Website changes
-do not invalidate compatibility and no whole Website tree is copied here. See
-[`docs/website-edge-contract-consumer.md`](docs/website-edge-contract-consumer.md).
+The immutable Website predecessor is commit
+`f587409adef29d4735b5e6ce8512c794579d8bef`. Its exact 31-file runtime,
+seven-file packaging, and six-function configuration seals are recorded in
+[`contracts/reaper-source-relocation.v1.json`](contracts/reaper-source-relocation.v1.json).
+That manifest distinguishes the 18 safe Reaper-specific source files from the
+13 Website-shared interfaces/adapters and records uncommitted Website overrides
+as deferred inputs rather than importing them. See
+[`docs/reaper-edge-source-ownership.md`](docs/reaper-edge-source-ownership.md).
 
 ## Welcome DM Gateway Worker
 
@@ -120,8 +126,14 @@ The public Discord command contract is:
 - `DISCORD_GALLERY_CHANNEL_ID`
 - `SUPABASE_FUNCTIONS_URL`
 - `DISCORD_GALLERY_INGEST_SECRET`
+- `DISCORD_GALLERY_INGEST_HMAC_KEYS_JSON`
+- `DISCORD_GALLERY_INGEST_HMAC_ACTIVE_KEY_ID`
 
-The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and optional `WELCOME_DM_ENABLED`. Gallery command registration and the rollback `/submit` Gateway fallback still require the other values. Website-owned Edge Function HMAC keys remain in the Website provider boundary and are never declared or stored here.
+The welcome DM worker only needs `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, and
+optional `WELCOME_DM_ENABLED`. Gallery command registration and the inactive
+rollback `/submit` Gateway reference still use the legacy placeholder. The
+Reaper-owned Edge signer selects its versioned HMAC key at runtime; real key
+values belong only in an approved server-side secret destination.
 
 ## Validation
 
@@ -169,7 +181,9 @@ still contains no deployment workflow and no runtime has been activated.
 - This source change does not enable pending-verification forwarding, deploy Reaper, change Discord or Supabase configuration, or send a Discord message.
 - Local and pull-request validation uses synthetic fixtures with no provider network calls. Green source tests do not prove that a production Gateway worker is running this revision.
 - Enabling the forwarder, publishing a runtime image, or changing a live worker requires a separately reviewed deployment packet with exact source, configuration, rollback, and live readback evidence.
-- Reaper is a contract-only consumer of the Website Edge Functions. Moving production ownership requires a successor architecture decision, an exact single-writer provider packet, a compatibility window, and rollback/readback evidence.
+- Reaper is the terminal source owner but is not yet the production writer.
+  Moving the live writer requires an exact single-writer provider packet, a
+  compatibility window, and rollback/readback evidence.
 
 ## Deployment Guardrails
 

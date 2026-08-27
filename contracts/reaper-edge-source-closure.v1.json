@@ -1,0 +1,671 @@
+{
+  "schemaVersion": 1,
+  "contractId": "reaper-edge-source-closure.v1",
+  "status": "staged-candidate-not-committed",
+  "baseCommit": "88d06147159ba3b9ea8d62fee08e50187c394a5b",
+  "branch": "agent/reaper-source-ownership-replay-20260811",
+  "selfPath": "contracts/reaper-edge-source-closure.v1.json",
+  "selfExcludedFromClosure": true,
+  "framing": "rows ASCII-sorted by path; each row is status + NUL + path + NUL + mode + NUL + Git blob + NUL + lowercase SHA256(blob bytes) + LF",
+  "fileCount": 82,
+  "byteCount": 13338,
+  "sha256": "56b56173ce68f9ed72cbe89b043009a19370fd619f3ee56487b02919cf1667a1",
+  "entries": [
+    {
+      "status": "M",
+      "path": ".env.example",
+      "mode": "100644",
+      "blob": "b345508e022ad91325431d1db1c412a359c0098f",
+      "sha256": "b6c1f7d0e725133357e360f21005c7f9f07544887c1602fa9ea5d69de2291ef2",
+      "byteCount": 2302
+    },
+    {
+      "status": "M",
+      "path": ".github/workflows/ci.yml",
+      "mode": "100644",
+      "blob": "6b01726b18c39ad18fb7699593ca62e34d815eaa",
+      "sha256": "e699ef74083028741c26c67eb09059e623ff51cf6faccd0028728f4660f8a381",
+      "byteCount": 1571
+    },
+    {
+      "status": "M",
+      "path": "AGENTS.md",
+      "mode": "100644",
+      "blob": "4495f7a3c7cfbc380953f7e7599eba3367784281",
+      "sha256": "47a0d3eaf7563455dc7b70e570a5d8f0722c5738cd6da4bdc5169d77c7bf0dd5",
+      "byteCount": 5381
+    },
+    {
+      "status": "M",
+      "path": "README.md",
+      "mode": "100644",
+      "blob": "1cb637f284510e0d8ae0da705b47d2acbd106d3a",
+      "sha256": "cac00809d060fb40787adc5f16a2b0dae32b7f4f0e0022b50d91e52461645821",
+      "byteCount": 9605
+    },
+    {
+      "status": "A",
+      "path": "bunfig.toml",
+      "mode": "100644",
+      "blob": "e7c0f5852d1b3302df82d0d316f135ec9fff0c76",
+      "sha256": "b8e6d8f731f1d09327a286c6e12ef2619926c4440d8043409773f96f15ea0e9f",
+      "byteCount": 176
+    },
+    {
+      "status": "A",
+      "path": "contracts/discord-gallery-authorization-context.v1.json",
+      "mode": "100644",
+      "blob": "f7a9c927001931423af8beef57113d66f2257a63",
+      "sha256": "db5ab92c20df4e59957979750e2ba6d3484f6112eb0ad87787bdf1d5be8d237c",
+      "byteCount": 8451
+    },
+    {
+      "status": "A",
+      "path": "contracts/discord-gallery-ingest-hmac.v1.json",
+      "mode": "100644",
+      "blob": "28144a28fa540ed6d93cd5d103c566049c9589d3",
+      "sha256": "af3025221626aadd2d0fc82fd79bb02b3f253ccdd8753fb78082aa885c929e3f",
+      "byteCount": 2227
+    },
+    {
+      "status": "A",
+      "path": "contracts/gallery-source-image-adapter.v1.json",
+      "mode": "100644",
+      "blob": "5393c0a08dfc593bdb297fc60fcd6f799f1cdf60",
+      "sha256": "93eae279ab03f4c309654a5d11818a6ed31464798f9185cc0a46bbe8ba2a34fa",
+      "byteCount": 1211
+    },
+    {
+      "status": "A",
+      "path": "contracts/reaper-edge-deployment.v1.json",
+      "mode": "100644",
+      "blob": "9603da19131a4fef1965a749a04b36c48bd8295d",
+      "sha256": "0284f8ff4de320d45a0a2eeaa044e5e2bcc8522b1963e6e7441875896d2f1212",
+      "byteCount": 1730
+    },
+    {
+      "status": "M",
+      "path": "contracts/reaper-edge-runtime.v1.json",
+      "mode": "100644",
+      "blob": "7cc54371a1341539422fd73ad5e8dd7aa7437277",
+      "sha256": "e7970bd7d88106b8d1eef916dd11b61062cf6fd1bea33bef4aa78c840adbee41",
+      "byteCount": 2056
+    },
+    {
+      "status": "A",
+      "path": "contracts/reaper-source-relocation.v1.json",
+      "mode": "100644",
+      "blob": "8ac073f5cdee5c8f0a74f6605488fb76c2378acd",
+      "sha256": "83a10281c4c3092a35ef5a64bc438e322a21ed9c83e3eb3b31b8633792977706",
+      "byteCount": 13212
+    },
+    {
+      "status": "M",
+      "path": "contracts/website-supabase-consumer.v1.json",
+      "mode": "100644",
+      "blob": "1b78e2825ea1b67e0b805d651ceebefee228fba9",
+      "sha256": "9cf0bdf27d1e884039d47bfa6946b880a7fe66b20a336254ff2738e9990a63a6",
+      "byteCount": 3690
+    },
+    {
+      "status": "A",
+      "path": "docs/edge-function-ownership-candidate.md",
+      "mode": "100644",
+      "blob": "3b14115ce08ee06150fd04b4ef95f1d7bd8e2faa",
+      "sha256": "695ba34480219f5112127f84824203bd41f19f93773e69f98e1073762f02971e",
+      "byteCount": 6556
+    },
+    {
+      "status": "A",
+      "path": "docs/reaper-edge-source-ownership.md",
+      "mode": "100644",
+      "blob": "2ff3633b09d3db4121103e013e2e035ccdec5576",
+      "sha256": "062ffc7b2996fb229a0e32bcaf6fb74f1d0783397548298de5ca4a8bfb2f69ee",
+      "byteCount": 5746
+    },
+    {
+      "status": "D",
+      "path": "docs/website-edge-contract-consumer.md",
+      "mode": "100644",
+      "blob": "b7fdf5b7ce351cd4c3d1781f1246704a33b8faec",
+      "sha256": "acc03c7206565365de08b9a7418aa8a51018018bffccceca36405fb0edb67bb1",
+      "byteCount": 3663
+    },
+    {
+      "status": "M",
+      "path": "package.json",
+      "mode": "100644",
+      "blob": "63c2a3fb83978885acacbec8bc1b62d30927b388",
+      "sha256": "df0a4ddc2953393feac6c8207df46f580944b647361c19cb5780fc98a02f3e35",
+      "byteCount": 1821
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-edge-contracts.ts",
+      "mode": "100644",
+      "blob": "35b85854bffef2a829d3f69a4d183e42b130ea04",
+      "sha256": "63929ca02226829d9cb5764f12e449b1a153f28f558d99f7c22fc669966a4771",
+      "byteCount": 55142
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-website-source-compatibility.ts",
+      "mode": "100644",
+      "blob": "543b4f871bea786ecc1ce51b69257e0776c21fcb",
+      "sha256": "389a397eee3fa873ad1195853602274e1dceae2f8b1723e84552e42aedffc193",
+      "byteCount": 6108
+    },
+    {
+      "status": "A",
+      "path": "scripts/run-edge-checks.ts",
+      "mode": "100644",
+      "blob": "a6f7055910a25ef268cf19c198ec1632178873e1",
+      "sha256": "8f2c3a9e0ac9f1059ff86a7cfa2cb57b32e1531c134f91d87f8e0f3840af4b58",
+      "byteCount": 692
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/bounded-request-body.ts",
+      "mode": "100644",
+      "blob": "926ac7d128373af4571a04b5a5b10ae489ec3241",
+      "sha256": "76012dec27ed42516a385142859b6da04dbdaedda176bc939e29c2d213fd439f",
+      "byteCount": 2629
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/bounded-request-body_test.ts",
+      "mode": "100644",
+      "blob": "1c2c4faacc7bf303339125118d7f5a115ce5a7a6",
+      "sha256": "fb5e6bab5913f5fbe3f1a7f7c76e19fb95b75fcd26ca6d52f4e5167e677270d4",
+      "byteCount": 2223
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/cors.ts",
+      "mode": "100644",
+      "blob": "ff7a62e68860aec3eba009c0d43068d62ac7935c",
+      "sha256": "cc16cf83f2ddaad83ba4c13cd9f8ede7d19928165281b7267c124732ff9a4d78",
+      "byteCount": 2125
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/discord-api.ts",
+      "mode": "100644",
+      "blob": "7576acaf8fd1928300449870d0f9e1cb9a25c6eb",
+      "sha256": "9f5382b43c8d44255d5a6eba8156b6aaa4697898f0b096fdee084f1199ea2b4c",
+      "byteCount": 6531
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/discord-gallery-ingest-contract_test.ts",
+      "mode": "100644",
+      "blob": "297cc4d16ec30349676e59644bab1d07ca97443b",
+      "sha256": "686c8092179c90233ccd8a4858269c3a5c71c10e82d204cab25138720cb55c59",
+      "byteCount": 7240
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/discord-gallery-ingest-signer.ts",
+      "mode": "100644",
+      "blob": "25d4a9812b95f1e13da118dd31a535cdfeaf2306",
+      "sha256": "1f08fcc933f0bfaa8ad0b2e6d9b9b294085b81cd2327ec37df71282349cec732",
+      "byteCount": 5878
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/discord-gallery-ingest-signer_test.ts",
+      "mode": "100644",
+      "blob": "64f3ad57769e39c4d4ca18d66fd100540bcd8253",
+      "sha256": "2ef3a4e2079f3dd1b495c81cc9bb482da94504cf8e66a51c953212c966af14bb",
+      "byteCount": 5849
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/discord-interaction-helpers.ts",
+      "mode": "100644",
+      "blob": "bb7392e4d184f2b163f23b55b1a435034386c466",
+      "sha256": "939531564a103dbf32cf5ec55a215d9b21ca177d4d7e0f593e55a8aa6e24c3b4",
+      "byteCount": 11271
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/discord-interaction-helpers_test.ts",
+      "mode": "100644",
+      "blob": "f484e0c1cafb47dd1534f9839ffbd755f4e007c7",
+      "sha256": "9f1c6d57fcb4b8502f2a134cc0f49b0ee1d4030d20a5069832ef70ad47598126",
+      "byteCount": 10713
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/discord-signature.ts",
+      "mode": "100644",
+      "blob": "7adbdb4cf0f5aa9434961f1e90e1819973e78717",
+      "sha256": "928573bec53614c1ea80eb17bcb6b8479b78753dc21c5fa4a3905b405ebeaf00",
+      "byteCount": 1456
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/discord-signature_test.ts",
+      "mode": "100644",
+      "blob": "0b17ea0610f1af7f7f2b006d20e06f703ec92bcf",
+      "sha256": "73651f1643e096aa45a3baf7624184e386223ac5db163fb7ddead387e554166e",
+      "byteCount": 2565
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/edge-tests.ts",
+      "mode": "100644",
+      "blob": "60b3aa82d80c056891fc26509b94ce71b4ed96d3",
+      "sha256": "d708ea5f0947af63e1ca889022aadf71728845db28f68b6374e4d1949b945e90",
+      "byteCount": 15537
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/gallery-source-image.ts",
+      "mode": "100644",
+      "blob": "19ec56f6200d8ee7d7b607a0fdadfe2c9ae54bed",
+      "sha256": "c91554b5787067d38d7b7aed06aa9fe64ff29833876660cf6892891071209202",
+      "byteCount": 21985
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/modmail-audit.ts",
+      "mode": "100644",
+      "blob": "9840e6d1c42580f312bbd0677994374708686a24",
+      "sha256": "34fae72e0072bac335cc7497b7b55a466fcfd037313cf7066f25a3d7c6fc3702",
+      "byteCount": 12647
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/modmail-audit_test.ts",
+      "mode": "100644",
+      "blob": "1cda49aaafd961406e0e32b65f8592a5f11aa52a",
+      "sha256": "ae1c2305a5c2aa8ffef305485fbfab654c61e51c207ec0f936505d93433184f4",
+      "byteCount": 8195
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/outbound-http.ts",
+      "mode": "100644",
+      "blob": "8cf51a6f1f6db5d6eba499b29f6d1431e6605651",
+      "sha256": "bf9aac56f2d3804898a0582c03d026adb6d9d6be445555699874024c330e2db6",
+      "byteCount": 4856
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/pending-verification-containment.ts",
+      "mode": "100644",
+      "blob": "abce87ebdbaf0f275fa38025aa463af3a7a81e04",
+      "sha256": "aa543acda358416e70e7f047217740f8780e7172d3e57f9dca699992f58026ac",
+      "byteCount": 26194
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/pending-verification-containment_test.ts",
+      "mode": "100644",
+      "blob": "0f8d54e1ef98139f6900f009d72a5c996b8e6546",
+      "sha256": "4193c005ed26b8c7e60af6f429ade45b07957b7cd11066b4430657acc0f74183",
+      "byteCount": 12143
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/photo-day-polls.ts",
+      "mode": "100644",
+      "blob": "cccf6ebb2e7738e9b7f5f557c2a675ba8cae08df",
+      "sha256": "fd887d4602c8f9e513d5b55b4260b40d835feb579088608db1b336faed39ae26",
+      "byteCount": 11020
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/photo-day-polls_test.ts",
+      "mode": "100644",
+      "blob": "e0ec9205798d66726f3ea3ba26f74b40d455d3eb",
+      "sha256": "7707f145311fe4bc9bc4c930c2302f41494e16d8f9639aabe239cb35001af1a8",
+      "byteCount": 7793
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/public-origins.ts",
+      "mode": "100644",
+      "blob": "d50260ec359d4e4d3ccd2516df96e4b7b0fe4d38",
+      "sha256": "f52fc7beba7692e3e172401390d1056408b1c1c88a7054a0a5d0aa40d102520c",
+      "byteCount": 60
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/reaper-discord-events.ts",
+      "mode": "100644",
+      "blob": "50de6a235282f8a52723313c00965f1db1b9c2e8",
+      "sha256": "38e6abae2e03df4cdc63a97534cd56f9f7736be303ba87d1f97155fa48963339",
+      "byteCount": 12864
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/reaper-discord-events_test.ts",
+      "mode": "100644",
+      "blob": "52dd886027f249ff266704381b2aa6d8b72bd139",
+      "sha256": "b1c969c797e393dc5ba6f3fb9123086cdcaf38f9d0c1a283ff0085fd6a8718bb",
+      "byteCount": 10977
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/reaper-event-sync-workflow.ts",
+      "mode": "100644",
+      "blob": "6d59a7bc59fdab396a170480631ab33c4868fd74",
+      "sha256": "a9da4cbf611e82239fa4dbae6b003d40b5db5eb3765a82803604bdfdf8ad7b20",
+      "byteCount": 17326
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/reaper-photo-day-poll-workflow.ts",
+      "mode": "100644",
+      "blob": "433b16489adaf2f12e54531228e5e302a5ef64e1",
+      "sha256": "ec9960f892ca803d2fd868b6012a253d0a1ec0bb1aadb267a555ed3956fec6d0",
+      "byteCount": 13179
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/reaper-rank-sync-workflow.ts",
+      "mode": "100644",
+      "blob": "f373fba246ff1c2f7712a0b6dfabe9e5ff644b6a",
+      "sha256": "d44f2078c1b5ebbc78ad9aae5392faa5953530bfd20242502d51f7ec050ae917",
+      "byteCount": 7443
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/reaper-vote-interactions.ts",
+      "mode": "100644",
+      "blob": "ed0af6c6c6fa55a075b8412028474ce6819212b6",
+      "sha256": "571d864a2422f7e67d180020b21f56d012e1cafc749ef0c88d154186ccc4d563",
+      "byteCount": 6064
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/runtime-config.ts",
+      "mode": "100644",
+      "blob": "c63968c0002325de55027b2b0c394886d2c6a36c",
+      "sha256": "4f8a845a6d2aaa38a0ddb2523059b315f43e2f362f34710321eb9987138d7cfc",
+      "byteCount": 12670
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/secret-auth.ts",
+      "mode": "100644",
+      "blob": "7724bd91093babe8db7cc5792500d870c2603fe5",
+      "sha256": "2c9c0cffa087c255247e766cd088e82b2a14a0b299867aa969fad312adce8087",
+      "byteCount": 1139
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/secret-auth_test.ts",
+      "mode": "100644",
+      "blob": "80c3da5d0f99d8b249e933eedc076a64637e4e3b",
+      "sha256": "c0e938ea80a7cdfb020e262c671be2c00d2d13040d73f4d08ea6986b713ebf12",
+      "byteCount": 1022
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/spinner-consumer-contract.ts",
+      "mode": "100644",
+      "blob": "494ff7eb4f6a0b29ca999eff81d576dc6acbc79a",
+      "sha256": "388355e82bf07fa45369933937b3905f48a57996d4947f5e0344f86a6d4fde98",
+      "byteCount": 3555
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/spinner-consumer-contract_test.ts",
+      "mode": "100644",
+      "blob": "27743e8db8cb4293a26f50fd7b08d46b4825f6fe",
+      "sha256": "74ba91b7352559932b0e770f9375bb43f159dc5edec6a35ad6b75de4d88dbe59",
+      "byteCount": 1698
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/spinner-discord-outbox.ts",
+      "mode": "100644",
+      "blob": "4d952e17eb0e3dfc8cb7cc978dedf4a0c1199829",
+      "sha256": "2d7da8f54fda867e9a6d5d53d4bc6b045419e8f4025de8fd4f5782fcccf07b3e",
+      "byteCount": 6512
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/spinner-media-dispatch.ts",
+      "mode": "100644",
+      "blob": "2a7101de48ed6b1f3e65eaa590393ce3e4be6594",
+      "sha256": "7135550bcf93166aa7287588982854cff9818588fa46a94669bfa01d0d12d05f",
+      "byteCount": 8940
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/spinner-media.ts",
+      "mode": "100644",
+      "blob": "b081022ac69ade67a21ea10315c06c15690e6227",
+      "sha256": "a346f33d1b82209c6f01f5d0565d2571e5ad82533f44d11886ab82cf5fe727ee",
+      "byteCount": 12121
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/spinner-media_test.ts",
+      "mode": "100644",
+      "blob": "500e50992bffe2cdf360b890abe442250898c082",
+      "sha256": "5b08fa2a6a2fe7a9113dfc137ca775f7e38c62980c83a9dd69e6ab1634fb1f99",
+      "byteCount": 15515
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/spotlight-polls.ts",
+      "mode": "100644",
+      "blob": "4c92f5eac9f6e93889675e418c516a061ebbceb5",
+      "sha256": "ec426f08911e11392738034dc512bbbf3b601090cd735722ec297470d833b98e",
+      "byteCount": 10745
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/spotlight-polls_test.ts",
+      "mode": "100644",
+      "blob": "94896c791dc6a80d1ec677253861392f89ed2474",
+      "sha256": "9d2538476c070495559dcacca67d9facaa0806ed0068632930d032e52c195e72",
+      "byteCount": 4111
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/strict-json.ts",
+      "mode": "100644",
+      "blob": "a99438f759e9c289c89e767edb562ec2a458f3fe",
+      "sha256": "5e06d36918e5ea473e72e3b59fa1fa5a4fb51f2a7aa732bd8c43de045c0bbf29",
+      "byteCount": 5192
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/strict-json_test.ts",
+      "mode": "100644",
+      "blob": "a73bad0101785a3beb5fad5cf3e0e800a4c90d66",
+      "sha256": "cf2dbd92659d1e7c13a4eb26603814b16dd23c51b20d3aa5293f6fcc449df07c",
+      "byteCount": 1734
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/supabase-service-role.ts",
+      "mode": "100644",
+      "blob": "2ba0b76d11d8ee869588696522c9d2ba2b582fdf",
+      "sha256": "72fc117b097fba9085a352300e0830e3052582fd4b24063fabfb27b8a2853337",
+      "byteCount": 777
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/supabase-service-role_test.ts",
+      "mode": "100644",
+      "blob": "d0cca22f120a5bd479ae8a3540289369fe339bdc",
+      "sha256": "0437c316f41a9552a26cd189df2b9525ddc7282bb962c42bac073d2dee6caa46",
+      "byteCount": 2032
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/vote-reminders.ts",
+      "mode": "100644",
+      "blob": "36e9da6ea5366b93bcf924588f501801bcbaf79a",
+      "sha256": "2800171e1029703522cb0fc11bb0d21e1f92473a66f07143478b7d56e7975159",
+      "byteCount": 8678
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/_shared/vote-reminders_test.ts",
+      "mode": "100644",
+      "blob": "21849bb43f9342338f6c5308b8c8893d2997c87a",
+      "sha256": "df4ce3fb69cf621fbca772c6c2e931328b456571199680b5b93dba3f41058490",
+      "byteCount": 2250
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/publish-member-spotlight-winner/deno.json",
+      "mode": "100644",
+      "blob": "32d88528c345ab2f688edb76ccf6b4182ee7d237",
+      "sha256": "a87869b6c5fbe2d95a8724cbe71df6ebc6483b0d04cdd069b0dff6985e5c6d88",
+      "byteCount": 192
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/publish-member-spotlight-winner/deno.lock",
+      "mode": "100644",
+      "blob": "b296a5220bf585656e9f0d50a64aa08eb71a6a2d",
+      "sha256": "d5c126e241c1bc2638fe58e64ad5bf044714248de525c8e8dbdbfb24411745a1",
+      "byteCount": 9975
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/publish-member-spotlight-winner/index.ts",
+      "mode": "100644",
+      "blob": "8525a92c81bec11eb454bfaedc2c7f61ff9eb9de",
+      "sha256": "e39351e651eb85551dc94e213338f0b4762a29204b4d6059ae75e9456c872991",
+      "byteCount": 9848
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/reaper-discord-interactions/deno.json",
+      "mode": "100644",
+      "blob": "befcf344d044d857407c0dc6645a9b54ff00d044",
+      "sha256": "b5912df15489ba41618793074781670a00bb78e6b886af7eb7214d5603976b82",
+      "byteCount": 232
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/reaper-discord-interactions/deno.lock",
+      "mode": "100644",
+      "blob": "f7df070a7f72a106f4a26e31e28ebf658e91c1ff",
+      "sha256": "871569c818e41e4ea6ac925713f7f9943a7e6c58a8311b57c15f33b594d8e736",
+      "byteCount": 10189
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/reaper-discord-interactions/index.ts",
+      "mode": "100644",
+      "blob": "ac626afa0077e24dca0cb66be9280dbf6fb40a8b",
+      "sha256": "a7b0c5650e9869a7b3e37bfaa40ad2e8864bf8e2c8a9a226056c6bfdf51d1ca9",
+      "byteCount": 40279
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/reaper-discord-member-sync/deno.json",
+      "mode": "100644",
+      "blob": "32d88528c345ab2f688edb76ccf6b4182ee7d237",
+      "sha256": "a87869b6c5fbe2d95a8724cbe71df6ebc6483b0d04cdd069b0dff6985e5c6d88",
+      "byteCount": 192
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/reaper-discord-member-sync/deno.lock",
+      "mode": "100644",
+      "blob": "b296a5220bf585656e9f0d50a64aa08eb71a6a2d",
+      "sha256": "d5c126e241c1bc2638fe58e64ad5bf044714248de525c8e8dbdbfb24411745a1",
+      "byteCount": 9975
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/reaper-discord-member-sync/index.ts",
+      "mode": "100644",
+      "blob": "461daf66c1a4bd80d5e287aaea61d72087446c50",
+      "sha256": "77f94bc8026386a992c93f83dcd5cf43bfaf5b3325ddcb3bf331749693270854",
+      "byteCount": 13638
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/reaper-spinner-dispatch/deno.json",
+      "mode": "100644",
+      "blob": "32d88528c345ab2f688edb76ccf6b4182ee7d237",
+      "sha256": "a87869b6c5fbe2d95a8724cbe71df6ebc6483b0d04cdd069b0dff6985e5c6d88",
+      "byteCount": 192
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/reaper-spinner-dispatch/deno.lock",
+      "mode": "100644",
+      "blob": "b296a5220bf585656e9f0d50a64aa08eb71a6a2d",
+      "sha256": "d5c126e241c1bc2638fe58e64ad5bf044714248de525c8e8dbdbfb24411745a1",
+      "byteCount": 9975
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/reaper-spinner-dispatch/index.ts",
+      "mode": "100644",
+      "blob": "0997c73d264d9d779b10d0cdeab8e994569b3cb1",
+      "sha256": "0677671bb532dafc8fc5183f1ece4797433c0a4bd82d2b148478e9854e6e5e14",
+      "byteCount": 14086
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/send-member-spotlight-poll/deno.json",
+      "mode": "100644",
+      "blob": "32d88528c345ab2f688edb76ccf6b4182ee7d237",
+      "sha256": "a87869b6c5fbe2d95a8724cbe71df6ebc6483b0d04cdd069b0dff6985e5c6d88",
+      "byteCount": 192
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/send-member-spotlight-poll/deno.lock",
+      "mode": "100644",
+      "blob": "b296a5220bf585656e9f0d50a64aa08eb71a6a2d",
+      "sha256": "d5c126e241c1bc2638fe58e64ad5bf044714248de525c8e8dbdbfb24411745a1",
+      "byteCount": 9975
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/send-member-spotlight-poll/index.ts",
+      "mode": "100644",
+      "blob": "addb776a171880ce4762e0799a7d8f5f0cc41de6",
+      "sha256": "376c0f44a53c139f10729c943535ec117f0fd73547f0b7ced7868f08a6a595d5",
+      "byteCount": 8170
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/send-vote-reminder/deno.json",
+      "mode": "100644",
+      "blob": "32d88528c345ab2f688edb76ccf6b4182ee7d237",
+      "sha256": "a87869b6c5fbe2d95a8724cbe71df6ebc6483b0d04cdd069b0dff6985e5c6d88",
+      "byteCount": 192
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/send-vote-reminder/deno.lock",
+      "mode": "100644",
+      "blob": "b296a5220bf585656e9f0d50a64aa08eb71a6a2d",
+      "sha256": "d5c126e241c1bc2638fe58e64ad5bf044714248de525c8e8dbdbfb24411745a1",
+      "byteCount": 9975
+    },
+    {
+      "status": "A",
+      "path": "supabase/functions/send-vote-reminder/index.ts",
+      "mode": "100644",
+      "blob": "b0257b13e2a2d81c06e02b0b018c05835f0085d2",
+      "sha256": "34f606d4c8e07ee7897bef377f42a9c4fe70ceafe4c2d6a8c3bf64693f853dbe",
+      "byteCount": 8387
+    },
+    {
+      "status": "M",
+      "path": "tests/command.test.ts",
+      "mode": "100644",
+      "blob": "b2783115f56d44c5b0c226504dea70dd6b5a5096",
+      "sha256": "acfd1156d1a99c3afe9c4e0a686d9a3c7336655cbaed9f3156d88e800056720a",
+      "byteCount": 1167
+    }
+  ]
+}

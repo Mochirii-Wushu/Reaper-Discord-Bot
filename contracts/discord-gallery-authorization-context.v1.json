@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 1,
+  "contractId": "discord-gallery-authorization-context.v1",
+  "status": "active-source-contract-not-deployed",
+  "producerOwner": "Mochirii-Wushu/Reaper-Discord-Bot",
+  "consumerOwner": "Mochirii-Wushu/Mochirii-Website",
+  "consumerFunction": "submit-discord-gallery-image",
+  "payloadFields": {
+    "authorizationContextVersion": {
+      "type": "string",
+      "const": "discord-gallery-authorization-context.v1"
+    },
+    "authorizationContextSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "duplicateDecodedJsonKeys": "reject"
+  },
+  "canonicalization": {
+    "encoding": "UTF-8",
+    "rowFraming": "label + NUL + value + LF",
+    "finalLf": true,
+    "identifierValidation": {
+      "inputType": "string",
+      "trimOrCoercion": "reject",
+      "asciiDecimalPattern": "^[1-9][0-9]{15,19}$",
+      "minimumValue": "1",
+      "maximumValue": "18446744073709551615",
+      "canonicalRoundTrip": "BigInt(value).toString(10) === value",
+      "validationOrder": [
+        "require string without trimming or coercion",
+        "require ASCII decimal syntax and 16..20 digits",
+        "parse BigInt and require minimumValue <= value <= maximumValue",
+        "require canonical base-10 BigInt round-trip equality"
+      ]
+    },
+    "requiredRoleCount": 2,
+    "requiredRoleUniqueness": "reject-duplicates-after-identifier-validation",
+    "requiredRoleOrdering": "ascending-ASCII",
+    "requiredRoleMatch": "all",
+    "rowOrder": [
+      "version",
+      "guild",
+      "gallery-channel",
+      "required-role-count",
+      "required-role-match",
+      "required-role (repeated once per canonical required role)"
+    ],
+    "fixedVersion": "discord-gallery-authorization-context.v1"
+  },
+  "authorizationBoundary": {
+    "producerInputs": [
+      "configured Discord guild ID",
+      "configured Discord gallery channel ID",
+      "configured required Discord role IDs"
+    ],
+    "excludedInputs": [
+      "secrets",
+      "HMAC key IDs",
+      "Discord member IDs"
+    ],
+    "producerBehavior": "hash canonical context and include both payload fields before HMAC signing",
+    "consumerBehavior": "independently recompute from validated consumer runtime context and reject mismatch before profile lookup, external fetch, storage upload, or application-row mutation",
+    "driftGuarantee": {
+      "detects": "one-sided guild, gallery-channel, required-role-set, or role-match drift",
+      "doesNotDetect": "coordinated matching configuration changes to both runtimes",
+      "coordinatedChangeControl": "reviewed private activation manifest and provider readback"
+    },
+    "verificationOrder": [
+      "bound raw request body and HMAC envelope",
+      "verify exact-body HMAC v1 without mutation",
+      "atomically consume the one-use nonce",
+      "parse duplicate-key-safe JSON and validate exact authorization field shape",
+      "recompute and compare authorization context from validated consumer runtime configuration",
+      "require all configured roles during profile authorization",
+      "permit external media fetch, storage upload, and application-row mutation"
+    ],
+    "nonceConsumptionException": "the nonce security ledger is the sole permitted pre-context mutation; nonce-store failure is fail-closed 503"
+  },
+  "hmacRelationship": {
+    "contractId": "discord-gallery-ingest-hmac.v1",
+    "wireChange": "none",
+    "bodyBinding": "both authorization-context fields are inside the exact UTF-8 JSON body before HMAC signing"
+  },
+  "syntheticVector": {
+    "guildId": "9000000000000001",
+    "galleryChannelId": "9000000000000002",
+    "requiredRoleMatch": "all",
+    "requiredRoleIdsInput": [
+      "9000000000000004",
+      "9000000000000003"
+    ],
+    "requiredRoleIdsCanonical": [
+      "9000000000000003",
+      "9000000000000004"
+    ],
+    "canonicalUtf8ByteCount": 213,
+    "canonicalUtf8Base64": "dmVyc2lvbgBkaXNjb3JkLWdhbGxlcnktYXV0aG9yaXphdGlvbi1jb250ZXh0LnYxCmd1aWxkADkwMDAwMDAwMDAwMDAwMDEKZ2FsbGVyeS1jaGFubmVsADkwMDAwMDAwMDAwMDAwMDIKcmVxdWlyZWQtcm9sZS1jb3VudAAyCnJlcXVpcmVkLXJvbGUtbWF0Y2gAYWxsCnJlcXVpcmVkLXJvbGUAOTAwMDAwMDAwMDAwMDAwMwpyZXF1aXJlZC1yb2xlADkwMDAwMDAwMDAwMDAwMDQK",
+    "sha256": "af0e2e6f1bcc2f15633ed33fc8947684c0f86abf50fa82d51c7f849bd72450d2"
+  },
+  "sortDistinguishingVector": {
+    "guildId": "9000000000000001",
+    "galleryChannelId": "9000000000000002",
+    "requiredRoleMatch": "all",
+    "requiredRoleIdsInput": [
+      "9000000000000000",
+      "10000000000000000"
+    ],
+    "requiredRoleIdsCanonical": [
+      "10000000000000000",
+      "9000000000000000"
+    ],
+    "canonicalUtf8ByteCount": 214,
+    "canonicalUtf8Base64": "dmVyc2lvbgBkaXNjb3JkLWdhbGxlcnktYXV0aG9yaXphdGlvbi1jb250ZXh0LnYxCmd1aWxkADkwMDAwMDAwMDAwMDAwMDEKZ2FsbGVyeS1jaGFubmVsADkwMDAwMDAwMDAwMDAwMDIKcmVxdWlyZWQtcm9sZS1jb3VudAAyCnJlcXVpcmVkLXJvbGUtbWF0Y2gAYWxsCnJlcXVpcmVkLXJvbGUAMTAwMDAwMDAwMDAwMDAwMDAKcmVxdWlyZWQtcm9sZQA5MDAwMDAwMDAwMDAwMDAwCg==",
+    "sha256": "70e0d0f32e819025ab8b35831e2ccd53fc2d6a95599141d4fd7761a6d79fdbab",
+    "numericOrderWouldBe": [
+      "9000000000000000",
+      "10000000000000000"
+    ],
+    "wrongNumericOrderCanonicalUtf8Base64": "dmVyc2lvbgBkaXNjb3JkLWdhbGxlcnktYXV0aG9yaXphdGlvbi1jb250ZXh0LnYxCmd1aWxkADkwMDAwMDAwMDAwMDAwMDEKZ2FsbGVyeS1jaGFubmVsADkwMDAwMDAwMDAwMDAwMDIKcmVxdWlyZWQtcm9sZS1jb3VudAAyCnJlcXVpcmVkLXJvbGUtbWF0Y2gAYWxsCnJlcXVpcmVkLXJvbGUAOTAwMDAwMDAwMDAwMDAwMApyZXF1aXJlZC1yb2xlADEwMDAwMDAwMDAwMDAwMDAwCg==",
+    "wrongNumericOrderSha256": "dfbe607461ff52ce4484eb4ad13535243c18d41460f109ec884e6c3d01847c6f"
+  },
+  "negativeVectorBaseline": {
+    "guildId": "9000000000000001",
+    "galleryChannelId": "9000000000000002",
+    "requiredRoleMatch": "all",
+    "requiredRoleIdsInput": [
+      "9000000000000000",
+      "10000000000000000"
+    ]
+  },
+  "negativeVectors": [
+    {
+      "name": "exact-duplicate-role",
+      "override": {
+        "requiredRoleIdsInput": [
+          "9000000000000000",
+          "9000000000000000"
+        ]
+      },
+      "rejection": "duplicate-required-role"
+    },
+    {
+      "name": "leading-zero-role-alias",
+      "override": {
+        "requiredRoleIdsInput": [
+          "9000000000000001",
+          "09000000000000001"
+        ]
+      },
+      "rejection": "non-canonical-identifier"
+    },
+    {
+      "name": "zero-guild",
+      "override": {
+        "guildId": "0000000000000000"
+      },
+      "rejection": "non-canonical-identifier"
+    },
+    {
+      "name": "uint64-overflow-channel",
+      "override": {
+        "galleryChannelId": "18446744073709551616"
+      },
+      "rejection": "identifier-out-of-range"
+    },
+    {
+      "name": "one-required-role",
+      "override": {
+        "requiredRoleIdsInput": [
+          "9000000000000000"
+        ]
+      },
+      "rejection": "required-role-count"
+    },
+    {
+      "name": "three-required-roles",
+      "override": {
+        "requiredRoleIdsInput": [
+          "9000000000000000",
+          "10000000000000000",
+          "10000000000000001"
+        ]
+      },
+      "rejection": "required-role-count"
+    },
+    {
+      "name": "leading-whitespace-guild",
+      "override": {
+        "guildId": " 9000000000000001"
+      },
+      "rejection": "non-canonical-identifier"
+    },
+    {
+      "name": "trailing-whitespace-channel",
+      "override": {
+        "galleryChannelId": "9000000000000002 "
+      },
+      "rejection": "non-canonical-identifier"
+    },
+    {
+      "name": "plus-sign-role",
+      "override": {
+        "requiredRoleIdsInput": [
+          "+9000000000000000",
+          "10000000000000000"
+        ]
+      },
+      "rejection": "non-canonical-identifier"
+    },
+    {
+      "name": "minus-sign-role",
+      "override": {
+        "requiredRoleIdsInput": [
+          "-9000000000000000",
+          "10000000000000000"
+        ]
+      },
+      "rejection": "non-canonical-identifier"
+    },
+    {
+      "name": "nul-role",
+      "override": {
+        "requiredRoleIdsInput": [
+          "9000000000000000\u0000",
+          "10000000000000000"
+        ]
+      },
+      "rejection": "non-canonical-identifier"
+    },
+    {
+      "name": "lf-role",
+      "override": {
+        "requiredRoleIdsInput": [
+          "9000000000000000\n",
+          "10000000000000000"
+        ]
+      },
+      "rejection": "non-canonical-identifier"
+    },
+    {
+      "name": "any-role-match",
+      "override": {
+        "requiredRoleMatch": "any"
+      },
+      "rejection": "required-role-match"
+    }
+  ]
+}

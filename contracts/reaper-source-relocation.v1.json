@@ -1,0 +1,277 @@
+{
+  "schemaVersion": 1,
+  "status": "source-candidate-not-activated",
+  "canonicalOwner": "Mochirii-Wushu/Reaper-Discord-Bot",
+  "predecessor": {
+    "repository": "Mochirii-Wushu/Mochirii-Website",
+    "commit": "f587409adef29d4735b5e6ce8512c794579d8bef",
+    "runtimeClosure": {
+      "fileCount": 31,
+      "framing": "ascii-sorted sourcePath + NUL + lowercase SHA256(file bytes) + LF",
+      "byteCount": 3584,
+      "sha256": "1e53021abd065e452ca41a51b09fde71910f94241edc9fcbd4a4b0f42972159f"
+    },
+    "packagingClosure": {
+      "fileCount": 7,
+      "framing": "ascii-sorted sourcePath + NUL + lowercase SHA256(file bytes) + LF",
+      "byteCount": 839,
+      "sha256": "229775da6639d2e761403c2a251539c51f26334a30b798fd352f479abafbc2a9"
+    },
+    "functionConfig": {
+      "functionCount": 6,
+      "framing": "compact canonical JSON with ASCII-sorted names and enabled,verifyJwt,importMap fields",
+      "byteCount": 753,
+      "sha256": "4a167704256706b3b02c919f3d3727cd60f9ecc95b162c09544fb69a00d0f92b"
+    }
+  },
+  "ownership": {
+    "reaper": [
+      "function-implementations",
+      "function-tests",
+      "scoped-deployment-definition",
+      "runtime-operations"
+    ],
+    "website": [
+      "shared-database-schema",
+      "tables",
+      "migrations",
+      "row-level-security",
+      "schedules",
+      "generic-project-config",
+      "submit-discord-gallery-image",
+      "shared-identity",
+      "current-production-writer-until-approved-cutover"
+    ]
+  },
+  "paths": [
+    {
+      "sourcePath": "supabase/functions/_shared/bounded-request-body.ts",
+      "targetPath": "supabase/functions/_shared/bounded-request-body.ts",
+      "sourceBlob": "db5f831cf6d4efe37bb598180c6b21c8bc54ef1a",
+      "sourceSha256": "53c8aaed213377f5fa41b0a98823f7fa7a0792a457311857d8fcc9a993613d33",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/cors.ts",
+      "targetPath": "supabase/functions/_shared/cors.ts",
+      "sourceBlob": "2d63c9b4dca33241d77d02837a4a95ba46fda087",
+      "sourceSha256": "ca831c732e64de15bd3c0eba72d46016c73ef1a429d394381cc657525414f67d",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/discord-api.ts",
+      "targetPath": "supabase/functions/_shared/discord-api.ts",
+      "sourceBlob": "5b50b7d450681a2f276141aa6bba2af459c4b22f",
+      "sourceSha256": "715819b26067d300adc5dd968b2da2bc6032bb5851f71b5a265933e84702c704",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/discord-gallery-ingest-auth.ts",
+      "targetPath": "supabase/functions/_shared/discord-gallery-ingest-signer.ts",
+      "sourceBlob": "2ff2bc0fc7a8be820c67482b333286057993773e",
+      "sourceSha256": "6713bdaf0fe58cfd340fc567547fdc795942cc1c4e12ee8a6edd88f14ace301d",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/discord-interaction-helpers.ts",
+      "targetPath": "supabase/functions/_shared/discord-interaction-helpers.ts",
+      "sourceBlob": "428250c2e3202ca45298608a2459bdd17241459c",
+      "sourceSha256": "2886fd4c664569d8c343eeea0c64fbf7507dbef5eaba007d22522021c248db85",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/discord-signature.ts",
+      "targetPath": "supabase/functions/_shared/discord-signature.ts",
+      "sourceBlob": "7adbdb4cf0f5aa9434961f1e90e1819973e78717",
+      "sourceSha256": "928573bec53614c1ea80eb17bcb6b8479b78753dc21c5fa4a3905b405ebeaf00",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/gallery-source-image.ts",
+      "targetPath": "supabase/functions/_shared/gallery-source-image.ts",
+      "sourceBlob": "4e441f2e843cba70c2d7d6e685f975b0f41d1144",
+      "sourceSha256": "9c7880f9710c8f011277252489893aa877e60621cba035c03f0598de40cc7a66",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/modmail-audit.ts",
+      "targetPath": "supabase/functions/_shared/modmail-audit.ts",
+      "sourceBlob": "f73a53ebdbcdfadded203dff1bb2885e0f7748fc",
+      "sourceSha256": "d9731e77b9037b2eb3a15234fd942e0f89a3b37bec530215f43536d5b8d983c4",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/outbound-http.ts",
+      "targetPath": "supabase/functions/_shared/outbound-http.ts",
+      "sourceBlob": "fa62a20590b6b679fb8fa4b7bf14b8547c63c2e4",
+      "sourceSha256": "b0813b7c147de996bfa0cf158b575693b95e8ffbf92a452526afa02bfabcacd0",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/pending-verification-containment.ts",
+      "targetPath": "supabase/functions/_shared/pending-verification-containment.ts",
+      "sourceBlob": "1b9498f4bb33bd650f2831597898169b9d6c4ccd",
+      "sourceSha256": "689b53f34e5db1cff0cb3e8d53100b925d3736af336cee65c7e4a2ee1ffec268",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/photo-day-polls.ts",
+      "targetPath": "supabase/functions/_shared/photo-day-polls.ts",
+      "sourceBlob": "0e88c9c46deaf03cebfa22063bfaabf0b4ac080c",
+      "sourceSha256": "e091e6ee8c3f528961b7e6cf06756cfb31ac32ab54ede32479f35f569a152471",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/public-origins.ts",
+      "targetPath": "supabase/functions/_shared/public-origins.ts",
+      "sourceBlob": "fa57a64db26ec96edb4ca685fc2e3f62ed00fac4",
+      "sourceSha256": "87c85fb5893691068e5b138da4703e0fd0148d4229ff4862f4fb6ffd40718da8",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/reaper-discord-events.ts",
+      "targetPath": "supabase/functions/_shared/reaper-discord-events.ts",
+      "sourceBlob": "bf8ad10b11233d5c80e41a1e4bcead235c2e2aca",
+      "sourceSha256": "00d6f4710a4a43fa35015ce65514b305971732e96a80ee684260db390818f7b9",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/reaper-event-sync-workflow.ts",
+      "targetPath": "supabase/functions/_shared/reaper-event-sync-workflow.ts",
+      "sourceBlob": "23e10f2ff20ef7b00e9508be516af378d7c56995",
+      "sourceSha256": "2f5d32286202f5088c1cf7acc20939d3e519a75c99b8e6fb1a95939dfd171ae8",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/reaper-photo-day-poll-workflow.ts",
+      "targetPath": "supabase/functions/_shared/reaper-photo-day-poll-workflow.ts",
+      "sourceBlob": "0d8b76b9c30dc306a92b2dd62d261c2a300cd482",
+      "sourceSha256": "be4e2e5675ba52aeb388fd40deab592447f5b4ef7d734c12daa1cc420ca4b175",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/reaper-rank-sync-workflow.ts",
+      "targetPath": "supabase/functions/_shared/reaper-rank-sync-workflow.ts",
+      "sourceBlob": "8e84a294a2f7bcb93967864a5bdd5bd86dd7686a",
+      "sourceSha256": "efa8b6f833ea5c9fe60787ce2454dba3b45e3d53b11e8a9c5dd7d820b60cc4eb",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/reaper-vote-interactions.ts",
+      "targetPath": "supabase/functions/_shared/reaper-vote-interactions.ts",
+      "sourceBlob": "db4454727acdc76b6ddb373fa4a2007d23aed3bc",
+      "sourceSha256": "9c35475bfd8b33f41146e97046eba06f87f87853f04654e0ef7e727bb191870c",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/secret-auth.ts",
+      "targetPath": "supabase/functions/_shared/secret-auth.ts",
+      "sourceBlob": "b464950bd559cbda9dad5db9f32fd3d2bceaf9dc",
+      "sourceSha256": "01299f1b743ed2a73ccdf06254635fafbc6d2d06b04e5b8f803462ce2acdd6be",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/spinner-discord-outbox.ts",
+      "targetPath": "supabase/functions/_shared/spinner-discord-outbox.ts",
+      "sourceBlob": "91064568f6ca50cd8642290610ea246af14f6add",
+      "sourceSha256": "25d2aeb34055da5aa27fc0d7307c8456a41981025b165a34a9789ce97ddc5e4c",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/spinner-live.ts",
+      "targetPath": "supabase/functions/_shared/spinner-consumer-contract.ts",
+      "sourceBlob": "d17eb36847e9ba9d921f7da744b3e4c2c77cc92a",
+      "sourceSha256": "260fc200043cc68b46718e8daeb61f2b54c88d3ce82cfa6bcb1ce6733e6db2b1",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/spinner-media-dispatch.ts",
+      "targetPath": "supabase/functions/_shared/spinner-media-dispatch.ts",
+      "sourceBlob": "b88aa77744528da4e4e84c4e3115ee483124d5ab",
+      "sourceSha256": "ddaa2c795a4b826d216a062c71b8e01a1c02a0bb25093584f75118d7ac31f9d6",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/spinner-media.ts",
+      "targetPath": "supabase/functions/_shared/spinner-media.ts",
+      "sourceBlob": "66914cefe091f4094afb7fae6f0643505f93a1ec",
+      "sourceSha256": "f23625bf6a034a22bb739762fb7eb9c8950662b7787d67ef25590008cea1d827",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/spotlight-polls.ts",
+      "targetPath": "supabase/functions/_shared/spotlight-polls.ts",
+      "sourceBlob": "45f5f665a422c750420c2ab0033e30997dbacd50",
+      "sourceSha256": "6ae653cc3fb5180b50fd911cec062c7f0b1fa8e612f2479cb8359759649d0de8",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/supabase-service-role.ts",
+      "targetPath": "supabase/functions/_shared/supabase-service-role.ts",
+      "sourceBlob": "7438b33ab1c808d784196a24e9601967cd65490c",
+      "sourceSha256": "037cde15ab2e76d7b91a4c33238d6284a89c42ae1043faf7c870eda3e2c36aa5",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/_shared/vote-reminders.ts",
+      "targetPath": "supabase/functions/_shared/vote-reminders.ts",
+      "sourceBlob": "38500e8cd7261f237e7b1de3bffb4fcdd8ef97a9",
+      "sourceSha256": "737aaf716a1b06704d1f0217051c92581152448e52b89f06947ad3c07a5b2d3e",
+      "transfer": "versioned-interface-adapter"
+    },
+    {
+      "sourcePath": "supabase/functions/publish-member-spotlight-winner/index.ts",
+      "targetPath": "supabase/functions/publish-member-spotlight-winner/index.ts",
+      "sourceBlob": "6ad22a01a754626b8e0d051df147de74fe705908",
+      "sourceSha256": "43e7b14e556d4dc4151cf5fc6a900b81cc6009fe77ad33951628204849e6d112",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/reaper-discord-interactions/index.ts",
+      "targetPath": "supabase/functions/reaper-discord-interactions/index.ts",
+      "sourceBlob": "b577c2867a764564c1334f4bc75bda05f30a0c7e",
+      "sourceSha256": "6d28f4b4ca9b25345287c0a2f4066ff3041160b0716329c130910c306cb810d3",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/reaper-discord-member-sync/index.ts",
+      "targetPath": "supabase/functions/reaper-discord-member-sync/index.ts",
+      "sourceBlob": "6d5fe329441c3d207e7b8098a7c88bfa092d8ebe",
+      "sourceSha256": "33810116a0120405c5752b405a2bbc79e2f0495a830ff64fb005149418bf87df",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/reaper-spinner-dispatch/index.ts",
+      "targetPath": "supabase/functions/reaper-spinner-dispatch/index.ts",
+      "sourceBlob": "ded22b3efce2adbb31215dbb0da584d1d09edc33",
+      "sourceSha256": "082d1d1d0c7b7cb1a212b9be4aa76a45642bb01bc497d34aa3f613fb2479122c",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/send-member-spotlight-poll/index.ts",
+      "targetPath": "supabase/functions/send-member-spotlight-poll/index.ts",
+      "sourceBlob": "3583a14ac861465b41f1145d5917e84f90cdfb52",
+      "sourceSha256": "22aeb8e67c4e16083a4b48069961f413bfc64d2dc4da729ac3568962d033ed5b",
+      "transfer": "reaper-specific-semantic-port"
+    },
+    {
+      "sourcePath": "supabase/functions/send-vote-reminder/index.ts",
+      "targetPath": "supabase/functions/send-vote-reminder/index.ts",
+      "sourceBlob": "230077f5e0589afe2f96572fe5bbebe6e1e36b2e",
+      "sourceSha256": "4bf07fdb62c1e0ad8317f4bddd52737d003da8d83120a6bd0335a7382df1acf1",
+      "transfer": "reaper-specific-semantic-port"
+    }
+  ],
+  "deferredContractInputs": [
+    {
+      "name": "Singapore schedule override",
+      "status": "deferred-uncommitted-input",
+      "reason": "No committed Website-shared counterpart and coherent fixture were sealed."
+    },
+    {
+      "name": "Last Blossom behavior override",
+      "status": "deferred-uncommitted-input",
+      "reason": "No committed Website-shared counterpart and coherent fixture were sealed."
+    }
+  ]
+}

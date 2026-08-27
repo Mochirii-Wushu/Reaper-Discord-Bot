@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "contractId": "reaper-gallery-source-image-adapter.v1",
+  "status": "versioned-interface-adapter",
+  "owner": "Mochirii-Wushu/Reaper-Discord-Bot",
+  "predecessor": {
+    "repository": "Mochirii-Wushu/Mochirii-Website",
+    "commit": "f587409adef29d4735b5e6ce8512c794579d8bef",
+    "path": "supabase/functions/_shared/gallery-source-image.ts",
+    "sha256": "9c7880f9710c8f011277252489893aa877e60621cba035c03f0598de40cc7a66"
+  },
+  "localModule": "supabase/functions/_shared/gallery-source-image.ts",
+  "validatorVersion": "reaper-gallery-source-adapter-v1",
+  "supportedMimeTypes": [
+    "image/jpeg",
+    "image/png",
+    "image/webp"
+  ],
+  "producerBoundary": {
+    "declaredMimeRequiredBeforeSigning": true,
+    "filenameExtensionMustMatchDeclaredMime": true,
+    "extensionOnlyMimeInference": false,
+    "attachmentUrlBoundToChannelAndAttachmentIds": true,
+    "safeIntegerSizeRequired": true,
+    "failureMode": "reject-before-hmac-signing"
+  },
+  "limits": {
+    "maximumBytes": 8388608,
+    "maximumEdgePixels": 4096,
+    "maximumTotalPixels": 12600000
+  },
+  "evidence": [
+    "mimeType",
+    "width",
+    "height",
+    "sizeBytes",
+    "sha256",
+    "validatorVersion"
+  ]
+}

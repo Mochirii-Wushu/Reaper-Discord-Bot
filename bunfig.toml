@@ -1,0 +1,4 @@
+[test]
+# Keep Bun's Gateway test discovery separate from the Deno Edge Function
+# suite, which is loaded explicitly by supabase/functions/_shared/edge-tests.ts.
+root = "tests"
