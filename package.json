@@ -18,7 +18,9 @@
     "audit:runtime": "bun run audit:production",
     "build": "bun node_modules/typescript/bin/tsc -p tsconfig.build.json",
     "check": "bun run check:artifact && bun run audit:all && bun run typecheck && bun run test && bun run build && bun run release:check && bun run edge:contracts && bun run edge:fmt && bun run edge:check && bun run edge:test",
-    "check:artifact": "node scripts/check-container-contract.mjs",
+    "check:artifact": "node scripts/check-container-contract.mjs && bun run check:deployment && bun run check:publication",
+    "check:deployment": "node scripts/check-gateway-deployment.mjs",
+    "check:publication": "bun scripts/check-gateway-image.ts",
     "check:container": "node scripts/check-built-container.mjs",
     "contracts:check": "bun run edge:contracts",
     "dev": "bun src/index.ts",
@@ -46,6 +48,6 @@
   },
   "overrides": {
     "@discordjs/rest": "2.6.3",
-    "undici": "6.28.0"
+    "undici": "6.28.1"
   }
 }

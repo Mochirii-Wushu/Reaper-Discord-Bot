@@ -1,0 +1,265 @@
+name: Gateway image publication
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_commit:
+        description: Approved current protected-main commit (40 lowercase hex)
+        required: true
+        type: string
+      expected_tree:
+        description: Approved source tree (40 lowercase hex)
+        required: true
+        type: string
+      publication_authorization:
+        description: Exact owner-approved publication-only permission exception
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: reaper-gateway-image-publication
+  cancel-in-progress: false
+
+env:
+  EXPECTED_SHA: ${{ inputs.expected_commit }}
+  EXPECTED_TREE: ${{ inputs.expected_tree }}
+  PUBLICATION_AUTHORIZATION: ${{ inputs.publication_authorization }}
+  IMAGE: ghcr.io/mochirii-wushu/reaper-discord-bot
+  SKOPEO_IMAGE: quay.io/skopeo/stable@sha256:3378b51926bf4be02982956bbbdfddc004a81047eb3ee55b359d8bfb520ac9eb
+
+jobs:
+  build:
+    if: github.repository == 'Mochirii-Wushu/Reaper-Discord-Bot' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.actor == 'xartaiusx' && github.triggering_actor == 'xartaiusx' && inputs.expected_commit == github.sha && inputs.publication_authorization == 'APPROVE_PUBLICATION_ONLY_GITHUB_TOKEN_PACKAGES_ATTESTATIONS_OIDC'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
+    env:
+      BUNDLE: ${{ runner.temp }}/gateway-bundle
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      digest: ${{ steps.image.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.EXPECTED_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.23.2"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.3.14"
+      - name: Verify owner, exact source and existing publication protection
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$BUNDLE" "$RUNNER_TEMP/publication-policy"
+          gh api repos/Mochirii-Wushu/Reaper-Discord-Bot > "$RUNNER_TEMP/publication-policy/repository.json"
+          gh api repos/Mochirii-Wushu/Reaper-Discord-Bot/branches/main > "$RUNNER_TEMP/publication-policy/branch.json"
+          gh api repos/Mochirii-Wushu/Reaper-Discord-Bot/environments/gateway-image-publication > "$RUNNER_TEMP/publication-policy/environment.json"
+          bun scripts/gateway-image-publication.ts guard "$RUNNER_TEMP/publication-policy"
+          test -z "$(git status --porcelain)"
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: 2.9.4
+      - name: Verify pinned Deno
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          printf '%s  %s\n' '1d97ecaf9e6bbb2a99e991caaf64ba9d62bf98759e8ef9938b9005855772b017' "$(command -v deno)" | sha256sum --check --strict -
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun run check
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.3
+      - name: Verify pinned runtime base signature
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          runtime="$(node -p "JSON.parse(require('fs').readFileSync('docs/operations/gateway-artifact.v1.json','utf8')).build.runtimeImage")"
+          cosign verify "$runtime" --certificate-oidc-issuer https://accounts.google.com --certificate-identity keyless@distroless.iam.gserviceaccount.com
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver: docker-container
+          driver-opts: image=moby/buildkit@sha256:3eea2ed5d1766c44eb4740853abf56ba85ad40b2c8d4a22e047cbacf15f463c8
+      - name: Record immutable build arguments
+        id: arguments
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$(git rev-parse HEAD^{tree})" = "$EXPECTED_TREE"
+          test -z "$(git status --porcelain)"
+          printf 'created=%s\n' "$(git show -s --format=%cI HEAD)" >> "$GITHUB_OUTPUT"
+          printf 'version=%s\n' "$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Build one attested OCI archive without registry credentials
+        id: image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: false
+          provenance: mode=max
+          sbom: true
+          outputs: type=oci,dest=${{ env.BUNDLE }}/gateway.oci.tar
+          build-args: |
+            BUILD_DATE=${{ steps.arguments.outputs.created }}
+            VERSION=${{ steps.arguments.outputs.version }}
+            VCS_REF=${{ env.EXPECTED_SHA }}
+      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.75.0
+          cache: false
+      - name: Scan the actual archive before any registry write
+        env:
+          BUILD_METADATA: ${{ steps.image.outputs.metadata }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker pull "$SKOPEO_IMAGE"
+          mkdir -p "$RUNNER_TEMP/skopeo-tmp"
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$RUNNER_TEMP/skopeo-tmp:/var/tmp" --volume "$BUNDLE:/bundle:ro" "$SKOPEO_IMAGE" inspect --raw oci-archive:/bundle/gateway.oci.tar > "$BUNDLE/manifest.json"
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$RUNNER_TEMP/skopeo-tmp:/var/tmp" --volume "$BUNDLE:/bundle:ro" --volume "$RUNNER_TEMP:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy oci-archive:/bundle/gateway.oci.tar docker-archive:/output/runtime.tar:mochirii-reaper-gateway:verified
+          trivy image --input "$RUNNER_TEMP/runtime.tar" --scanners vuln,secret --ignorefile /dev/null --ignore-unfixed=false --exit-code 0 --format json --output "$BUNDLE/scan.json"
+          trivy image --input "$RUNNER_TEMP/runtime.tar" --format spdx-json --output "$BUNDLE/sbom.spdx.json"
+          printf '%s' "$BUILD_METADATA" > "$BUNDLE/build-metadata.json"
+          trivy version --format json > "$BUNDLE/tool-versions.json"
+          bun scripts/gateway-image-publication.ts record "$BUNDLE" '${{ steps.image.outputs.digest }}'
+          docker load --input "$RUNNER_TEMP/runtime.tar"
+          REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:verified REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container
+          printf 'Approved source: %s / %s\nOCI digest with attestations: %s\nIts converted linux/amd64 runnable archive passed scan and offline checks. No registry or runtime activation has occurred.\n' "$EXPECTED_SHA" "$EXPECTED_TREE" '${{ steps.image.outputs.digest }}' >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain immutable scanned archive and evidence
+        id: upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gateway-oci-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.BUNDLE }}/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          overwrite: false
+
+  publish:
+    needs: build
+    if: needs.build.result == 'success' && github.repository == 'Mochirii-Wushu/Reaper-Discord-Bot' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.actor == 'xartaiusx' && github.triggering_actor == 'xartaiusx' && inputs.expected_commit == github.sha && inputs.publication_authorization == 'APPROVE_PUBLICATION_ONLY_GITHUB_TOKEN_PACKAGES_ATTESTATIONS_OIDC'
+    environment: gateway-image-publication
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+      attestations: write
+      id-token: write
+    env:
+      BUNDLE: ${{ runner.temp }}/gateway-bundle
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.EXPECTED_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.3.14"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: ${{ env.BUNDLE }}
+      - name: Recheck exact current source and protected owner approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$RUNNER_TEMP/publication-policy"
+          gh api repos/Mochirii-Wushu/Reaper-Discord-Bot > "$RUNNER_TEMP/publication-policy/repository.json"
+          gh api repos/Mochirii-Wushu/Reaper-Discord-Bot/branches/main > "$RUNNER_TEMP/publication-policy/branch.json"
+          gh api repos/Mochirii-Wushu/Reaper-Discord-Bot/environments/gateway-image-publication > "$RUNNER_TEMP/publication-policy/environment.json"
+          bun scripts/gateway-image-publication.ts guard "$RUNNER_TEMP/publication-policy"
+      - name: Verify the same scanned archive
+        id: verified
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bun scripts/gateway-image-publication.ts verify "$BUNDLE"
+          docker pull "$SKOPEO_IMAGE"
+          mkdir -p "$RUNNER_TEMP/skopeo-tmp"
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$RUNNER_TEMP/skopeo-tmp:/var/tmp" --volume "$BUNDLE:/bundle:ro" "$SKOPEO_IMAGE" inspect --raw oci-archive:/bundle/gateway.oci.tar > "$RUNNER_TEMP/actual-manifest.json"
+          cmp "$BUNDLE/manifest.json" "$RUNNER_TEMP/actual-manifest.json"
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: xartaiusx
+          password: ${{ github.token }}
+      - name: Promote the exact archive without replacing a revision
+        id: promoted
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIGEST: ${{ steps.verified.outputs.digest }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          tag="sha-$EXPECTED_SHA-run-$GITHUB_RUN_ID-attempt-$GITHUB_RUN_ATTEMPT"
+          auth="${{ runner.temp }}/gateway-registry-auth.json"
+          cp "$HOME/.docker/config.json" "$auth"
+          chmod 0600 "$auth"
+          trap 'rm -f "$auth"' EXIT
+          if docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$auth:/auth.json:ro" "$SKOPEO_IMAGE" inspect --authfile /auth.json "docker://$IMAGE:$tag" > "$RUNNER_TEMP/tag-check.json" 2> "$RUNNER_TEMP/tag-check-error.txt"; then
+            echo "The unique run tag already exists; publication is refused." >&2
+            exit 1
+          fi
+          grep -Eq 'manifest unknown|name unknown' "$RUNNER_TEMP/tag-check-error.txt"
+          gh api repos/Mochirii-Wushu/Reaper-Discord-Bot > "$RUNNER_TEMP/publication-policy/repository.json"
+          gh api repos/Mochirii-Wushu/Reaper-Discord-Bot/branches/main > "$RUNNER_TEMP/publication-policy/branch.json"
+          gh api repos/Mochirii-Wushu/Reaper-Discord-Bot/environments/gateway-image-publication > "$RUNNER_TEMP/publication-policy/environment.json"
+          bun scripts/gateway-image-publication.ts guard "$RUNNER_TEMP/publication-policy"
+          bun scripts/gateway-image-publication.ts verify "$BUNDLE"
+          docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$RUNNER_TEMP/skopeo-tmp:/var/tmp" --volume "$auth:/auth.json:ro" --volume "$BUNDLE:/bundle:ro" "$SKOPEO_IMAGE" copy --all --preserve-digests --dest-authfile /auth.json "oci-archive:/bundle/gateway.oci.tar" "docker://$IMAGE:$tag"
+          docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$auth:/auth.json:ro" "$SKOPEO_IMAGE" inspect --raw --authfile /auth.json "docker://$IMAGE@$DIGEST" > "$RUNNER_TEMP/registry-manifest.json"
+          cmp "$BUNDLE/manifest.json" "$RUNNER_TEMP/registry-manifest.json"
+          printf 'digest=%s\n' "$DIGEST" >> "$GITHUB_OUTPUT"
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.3
+      - name: Sign and verify only the published digest
+        env:
+          DIGEST: ${{ steps.promoted.outputs.digest }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cosign sign --yes "$IMAGE@$DIGEST"
+          cosign verify "$IMAGE@$DIGEST" --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity https://github.com/Mochirii-Wushu/Reaper-Discord-Bot/.github/workflows/gateway-image.yml@refs/heads/main > "$RUNNER_TEMP/signature.json"
+      - name: Publish signed source provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ghcr.io/mochirii-wushu/reaper-discord-bot
+          subject-digest: ${{ steps.promoted.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+      - name: Publish signed image SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ghcr.io/mochirii-wushu/reaper-discord-bot
+          subject-digest: ${{ steps.promoted.outputs.digest }}
+          sbom-path: ${{ env.BUNDLE }}/sbom.spdx.json
+          push-to-registry: true
+          create-storage-record: false
+      - name: Verify hosted provenance and record publication without activation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIGEST: ${{ steps.promoted.outputs.digest }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          gh attestation verify "oci://$IMAGE@$DIGEST" --repo Mochirii-Wushu/Reaper-Discord-Bot --signer-workflow Mochirii-Wushu/Reaper-Discord-Bot/.github/workflows/gateway-image.yml --source-digest "$EXPECTED_SHA" --source-ref refs/heads/main --deny-self-hosted-runners --bundle-from-oci --format json > "$RUNNER_TEMP/provenance-verification.json"
+          gh attestation verify "oci://$IMAGE@$DIGEST" --repo Mochirii-Wushu/Reaper-Discord-Bot --signer-workflow Mochirii-Wushu/Reaper-Discord-Bot/.github/workflows/gateway-image.yml --source-digest "$EXPECTED_SHA" --source-ref refs/heads/main --deny-self-hosted-runners --bundle-from-oci --predicate-type https://spdx.dev/Document/v2.3 --format json > "$RUNNER_TEMP/sbom-verification.json"
+          printf 'Published and verified: %s@%s\nSource: %s / %s\nNo package visibility, host, secret, Discord, command or deployment change performed. Retain this digest and any deployed/rollback digests; no deletion is automated.\n' "$IMAGE" "$DIGEST" "$EXPECTED_SHA" "$EXPECTED_TREE" >> "$GITHUB_STEP_SUMMARY"
