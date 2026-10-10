@@ -18,7 +18,7 @@
   "runtime": {
     "persistentGatewayRequired": true,
     "automaticRestartRequired": true,
-    "statefulApplicationData": false
+    "statefulApplicationData": true
   },
   "releaseRequirements": [
     "reviewed-source-commit",

@@ -1,0 +1,12 @@
+[Unit]
+Description=Mochirii Reaper Gateway private health interval
+PartOf=mochirii-reaper-gateway.service
+
+[Timer]
+OnActiveSec=60s
+OnUnitActiveSec=60s
+AccuracySec=5s
+Unit=mochirii-reaper-gateway-health.service
+
+[Install]
+WantedBy=mochirii-reaper-gateway.service

@@ -2,17 +2,21 @@
 
 Status: `SOURCE_ONLY_NOT_DEPLOYED`.
 
-This runbook defines the source contract only. It does not select a host,
-create infrastructure, configure a provider, publish an image, register a
-command, or send a message.
+This runbook defines the source contract and locally prepared hosting template.
+It does not create infrastructure, configure a provider, publish an image,
+register a command, or send a message. See
+[`operations/GATEWAY-DEPLOYMENT.md`](operations/GATEWAY-DEPLOYMENT.md) for the
+DigitalOcean candidate, measured limits, and remaining release gates.
 
 ## Runtime contract
 
 - Build with the exact toolchain in `contracts/gateway-release.v1.json`.
 - Bind the reviewed source commit to an immutable artifact digest, dependency
   SBOM, and provenance attestation before promotion.
-- Supply credentials only from the approved runtime secret store. Never bake
-  them into an image, artifact, environment file, log, or evidence packet.
+- Supply credentials only from the approved runtime secret boundary. The
+  prepared host flow uses a root-owned mode-0600 runtime file outside the
+  checkout, read only by Docker Compose. Never bake values into an image,
+  template, user-data, log, or evidence packet.
 - Run as a non-privileged identity with a read-only application filesystem and
   a host-owned writable readiness directory.
 - Configure `REAPER_HEALTH_STATE_PATH` as an absolute path in that directory.
@@ -40,12 +44,20 @@ runtime properties.
 
 ## Data and recovery
 
-The Gateway worker has no canonical application database or durable member
-payloads. Recovery inputs are reviewed source, an immutable artifact, provider
-configuration, and secret-store entries. Database migrations and shared data
-remain Website-owned. Back up provider configuration and secret metadata using
-the provider's approved recovery process without exporting secret values into
-Git.
+The Gateway worker has no canonical application database. Its private host spool
+does retain member IDs, roles, timestamps, and immutable request bodies until
+the Website-owned durable receipt reports completion. Preserve that state on
+restart and rollback. Never reset UUIDs, remove unresolved work, or replace a
+blocked receipt to clear uncertainty. Queue exhaustion and corrupt state require
+operator reconciliation. Database migrations and shared fences remain
+Website-owned.
+
+Recovery inputs are reviewed source, an immutable artifact, provider
+configuration, protected runtime credentials, and the private spool. Encrypted,
+access-controlled backup/recovery for credentials and spool state must be
+approved and verified separately; no backup or restore currently follows from
+the templates. A local cloud-synced credential recovery copy must never become a
+runtime dependency or contain copied member payloads without its own approval.
 
 ## Promotion and rollback
 

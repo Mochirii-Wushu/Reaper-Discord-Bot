@@ -7,9 +7,9 @@
   "selfPath": "contracts/reaper-edge-source-closure.v1.json",
   "selfExcludedFromClosure": true,
   "framing": "rows ASCII-sorted by path; each row is status + NUL + path + NUL + mode + NUL + Git blob + NUL + lowercase SHA256(blob bytes) + LF",
-  "fileCount": 118,
-  "byteCount": 18612,
-  "sha256": "3a94aaf2cb0770cab087e2feca18743e134712430c7b68a94a7465083d99e2c4",
+  "fileCount": 137,
+  "byteCount": 21392,
+  "sha256": "3534f60843a92b48baafdca90343e0af8114b5c9b49570541af64b7e37dbd672",
   "entries": [
     {
       "status": "A",
@@ -23,9 +23,9 @@
       "status": "M",
       "path": ".env.example",
       "mode": "100644",
-      "blob": "216a38ff11ff166518385c1cf2c6764154455dd8",
-      "sha256": "af8f9dac7ca8cd22377b53ecb6ff8e1fd12a78ba07ab4e9eb8ff6e1e41d5d79d",
-      "byteCount": 2408
+      "blob": "c3289f2b60807e13a7dd2661133ab734645f78d0",
+      "sha256": "6babf7c06bfc974748a68223058531405bebab28e957e0b0501bf95edd7b6974",
+      "byteCount": 2530
     },
     {
       "status": "A",
@@ -42,6 +42,22 @@
       "blob": "d11edc24cbae8abd0416d9cf45b48e1d3b527668",
       "sha256": "a07685d8402ce9d632eedffa7ab23097a214162218aa7ae2413ce49ce44f8933",
       "byteCount": 2262
+    },
+    {
+      "status": "A",
+      "path": ".github/workflows/gateway-image.yml",
+      "mode": "100644",
+      "blob": "98266454c516baa808166143c683c57fa0003c73",
+      "sha256": "be5d5442c5dd128a5d55dc5e8db98cde3000b38e8ec48d29ab78cde8cd190c7c",
+      "byteCount": 15402
+    },
+    {
+      "status": "M",
+      "path": ".gitignore",
+      "mode": "100644",
+      "blob": "a5dece8126b3ce01d911953d15ac5dbc4fed1405",
+      "sha256": "4a7d91b3e1cde9a49fc24bd22137a8e3cf88a55cacf04494ee64c69d8141d742",
+      "byteCount": 92
     },
     {
       "status": "M",
@@ -63,9 +79,9 @@
       "status": "M",
       "path": "README.md",
       "mode": "100644",
-      "blob": "b3d7045dd5a9e6bfb3f3a7c7f4bae491ee92b068",
-      "sha256": "befb623f6091530551b0f0d6d2b35bdb5d450b44a390a3e7f4a32e9c0bd167d9",
-      "byteCount": 11407
+      "blob": "072c75bd426ba7db1e9c293cbe8081baa92286c9",
+      "sha256": "ce61dc6d6432e19c1c413e33a96f54ddab203553b6f116036ed1297fe7a8eea9",
+      "byteCount": 11953
     },
     {
       "status": "M",
@@ -74,6 +90,14 @@
       "blob": "f70ee52d50452b7ba7ed2f1bc750c052eb97f7ae",
       "sha256": "a81e5d8f7a7b80b75b787c4486cbec3d93882b392afa5b9a192ed8ef716954ad",
       "byteCount": 2550
+    },
+    {
+      "status": "M",
+      "path": "bun.lock",
+      "mode": "100644",
+      "blob": "a1836a1e247aabe46c00d190d043aa809ce4de88",
+      "sha256": "d015f7ebf2c1e3573eb54dc2ed5fc47ec573e2c1f360fb286a8499d71619439c",
+      "byteCount": 7483
     },
     {
       "status": "A",
@@ -124,12 +148,20 @@
       "byteCount": 1211
     },
     {
+      "status": "A",
+      "path": "contracts/gateway-image-publication.v1.json",
+      "mode": "100644",
+      "blob": "59ac7732403f3212cb85ecc172eb53d45c3f8042",
+      "sha256": "497a2c157d3f6cc63479682d3205b9820e6963a04762f95a47b259880a44520c",
+      "byteCount": 3031
+    },
+    {
       "status": "M",
       "path": "contracts/gateway-release.v1.json",
       "mode": "100644",
-      "blob": "a5289f535b5da40d45f193cb1aa49f3781456ef6",
-      "sha256": "58d207ddc273c6018b3c2261df1befaea4b3db6a9c4f4bd8ddf7a22b3f163665",
-      "byteCount": 1241
+      "blob": "ceed055f27ea5a1ccb1f45817a411b2439e83edb",
+      "sha256": "7d70c32333780933b3863c609067f8f7dce974309edf3dea696491470377254e",
+      "byteCount": 1240
     },
     {
       "status": "A",
@@ -172,6 +204,46 @@
       "byteCount": 3690
     },
     {
+      "status": "A",
+      "path": "deploy/gateway-health.sh",
+      "mode": "100644",
+      "blob": "59d8645a8dc053fbc3e6b221db2569d763154688",
+      "sha256": "7c3973b59fe12569eac2602a31501b21abf10fe0dcbe99e2afc0344406a28593",
+      "byteCount": 4654
+    },
+    {
+      "status": "A",
+      "path": "deploy/gateway.compose.yml",
+      "mode": "100644",
+      "blob": "7015bb411751b9503250860e6aa5969de7d95a71",
+      "sha256": "4454d5933bc380be72752ff68f37ff4d5d91f2a7b428d4a6154ab72f7f8d430b",
+      "byteCount": 1511
+    },
+    {
+      "status": "A",
+      "path": "deploy/mochirii-reaper-gateway-health.service",
+      "mode": "100644",
+      "blob": "7ba25434fa80142e92b647e068e69b8cc516bfea",
+      "sha256": "ee89036479fecc96774c5a0657a4e095b3b83a8e5fc98bfd47f14aabb8e4de01",
+      "byteCount": 515
+    },
+    {
+      "status": "A",
+      "path": "deploy/mochirii-reaper-gateway-health.timer",
+      "mode": "100644",
+      "blob": "c39a63d7e40356c612d29bf112fabd05a75b9adb",
+      "sha256": "e222e4b839232f7585356ce5ceb4d4255f9618385dc6ac632910e06b37ddeeea",
+      "byteCount": 262
+    },
+    {
+      "status": "A",
+      "path": "deploy/mochirii-reaper-gateway.service",
+      "mode": "100644",
+      "blob": "51301dd429a68a7377ee6c7052b699dc3eec06c8",
+      "sha256": "5657abf0c886ee158b14c2f9e31f8e443abb4491b99f63870f82309226a81554",
+      "byteCount": 1484
+    },
+    {
       "status": "M",
       "path": "docs/dependency-security.md",
       "mode": "100644",
@@ -191,9 +263,17 @@
       "status": "A",
       "path": "docs/operations/GATEWAY-ARTIFACT.md",
       "mode": "100644",
-      "blob": "34649d8302fc8f0a1404721e982960c449a914be",
-      "sha256": "04cf4f8eeac38433c29a459fcb6f9585c9b51c42fb8995f9a679bd771d6944aa",
-      "byteCount": 6407
+      "blob": "52cc2e52bd2dfc5a85c44f1c07456eb45212df8b",
+      "sha256": "4de73ce1f7a1a38e52717c3d5e3cfb71d51a2ccb417ba283f773442aad438d13",
+      "byteCount": 10558
+    },
+    {
+      "status": "A",
+      "path": "docs/operations/GATEWAY-DEPLOYMENT.md",
+      "mode": "100644",
+      "blob": "f6ac064c12c5e422bc9a4657d3e9708916684676",
+      "sha256": "f8d432a797a43699452b191e2cf927c209f9fd6ae3c4a00097121fa976041af1",
+      "byteCount": 9479
     },
     {
       "status": "A",
@@ -212,6 +292,14 @@
       "byteCount": 6950
     },
     {
+      "status": "M",
+      "path": "docs/runtime-operations.md",
+      "mode": "100644",
+      "blob": "208847b5fe2aaf5360c584a5dd599e0fa88753e8",
+      "sha256": "1ba6d7240a1a586ad1a9138c16a2d5ce35c72e25815a60de9a012f816f0b38b6",
+      "byteCount": 3979
+    },
+    {
       "status": "D",
       "path": "docs/website-edge-contract-consumer.md",
       "mode": "100644",
@@ -223,9 +311,9 @@
       "status": "M",
       "path": "package.json",
       "mode": "100644",
-      "blob": "c5e6ff09d3b6a77cb84703cbbbe1e8ba8e221f3e",
-      "sha256": "a094ff71cef573ec8376970e25bafd018066e184b98592e739dd2163ff42394b",
-      "byteCount": 2452
+      "blob": "e16015b9b41052df1ba60eb8a81cadc34fb1635e",
+      "sha256": "7feb8ff3f93cb16d23b2820acd66227cbea6f02f8ca72d52edf62f344983e1c4",
+      "byteCount": 2641
     },
     {
       "status": "A",
@@ -271,17 +359,33 @@
       "status": "M",
       "path": "scripts/check-edge-contracts.ts",
       "mode": "100644",
-      "blob": "ddab0b226922dceb1f96684322b8bee69bb6da3c",
-      "sha256": "5b49cca84fff582601d78691e35a0d98e8d1cbe1c2b582647ba792584bba9219",
-      "byteCount": 76191
+      "blob": "b1abe7fb417c84c88abcb0acf740940c62d06117",
+      "sha256": "9b5e18db9bc5089f898debe05a8e8c48373e520af3cf0353778be9e3fd4fa02d",
+      "byteCount": 76299
+    },
+    {
+      "status": "A",
+      "path": "scripts/check-gateway-deployment.mjs",
+      "mode": "100644",
+      "blob": "19db8bf302e0f85d95ff5846dd451f70a44f2221",
+      "sha256": "f08e87f32b5773b7bb00843b9f3772238496c92bbf5a188cbdc214ed4b0c512b",
+      "byteCount": 9413
+    },
+    {
+      "status": "A",
+      "path": "scripts/check-gateway-image.ts",
+      "mode": "100644",
+      "blob": "4bb4425a96fad6bfd364fee7e5a95b7d000a43e5",
+      "sha256": "bbbe8ca89136b88b4c485573789429b9336a38f3162e30ff0e46cc0fc8a64707",
+      "byteCount": 7500
     },
     {
       "status": "M",
       "path": "scripts/check-release-readiness.ts",
       "mode": "100644",
-      "blob": "03cd8a713bde473810cf25dcd5b24d574f3cbab7",
-      "sha256": "ddcae5040e5466b7e9382310bc65af612b3cc16edffbae9689d02c1e520bf221",
-      "byteCount": 19040
+      "blob": "335681753cfa87a8bc7dfe5d3928ec9fd406c48c",
+      "sha256": "7f83f843c45b4dae24d476d926d91f094eea85fa83aecb3d500d475210fc4f07",
+      "byteCount": 19923
     },
     {
       "status": "M",
@@ -290,6 +394,14 @@
       "blob": "479f412cd736a10e791eb4d424cd427f0b42aa9c",
       "sha256": "dd7f55d53d18fe2a8462f498230fa17f3dce1853567673771171844867f64e0a",
       "byteCount": 12157
+    },
+    {
+      "status": "A",
+      "path": "scripts/gateway-image-publication.ts",
+      "mode": "100644",
+      "blob": "0f93bfcc8f284cfc2f7d1ec31f43861efb32abab",
+      "sha256": "b77ab1b2d038ce2a9c5d1e466fc54882f3687a9db236eb7cda2fd4c3c430b746",
+      "byteCount": 11427
     },
     {
       "status": "A",
@@ -319,9 +431,9 @@
       "status": "M",
       "path": "src/config.ts",
       "mode": "100644",
-      "blob": "9e524f563c045ab035ac5bfda8badc43e1fcd609",
-      "sha256": "d777da1edb216594db66ae40cb95a9133748b01de89efe67fd6ecadb0f435864",
-      "byteCount": 7187
+      "blob": "47f642907addb02beabe626d3ff84a8b85bc104b",
+      "sha256": "51f6e96a11a8f2bc6a308e3cd0e5d1a532eb176f3052a8c045bcc0e7aedc217a",
+      "byteCount": 7616
     },
     {
       "status": "A",
@@ -343,9 +455,25 @@
       "status": "M",
       "path": "src/index.ts",
       "mode": "100644",
-      "blob": "7783849847829b14428cf06d9632fa66aeeb1b74",
-      "sha256": "c6cdba3c9908471c1507f76aa15071b4a4f32727d0944061b002f3664eee251c",
-      "byteCount": 3798
+      "blob": "de3ed5acb3282a7bf758af908c8e75a551964102",
+      "sha256": "ab5bcfe1d30dffdb80378e9c3d096637f9ac467321fce9a2f2215f7d7b138eb6",
+      "byteCount": 4045
+    },
+    {
+      "status": "A",
+      "path": "src/member-forwarder.ts",
+      "mode": "100644",
+      "blob": "a7678f38e29f4a41f5677331312f7d1225693756",
+      "sha256": "cb2fb3463f7753169452a0a0adc5c8d48fdae185fa0ebd8008dd2b433ce075c1",
+      "byteCount": 15707
+    },
+    {
+      "status": "M",
+      "path": "src/pending-verification.ts",
+      "mode": "100644",
+      "blob": "91cfcff7d6afd5ed6879c2ec3ba33e5ba09bf9e2",
+      "sha256": "cfaa5eea00ea9feac7922f89fcd590f9d5d605cfabb9ce1fc107aaa05d8e80e9",
+      "byteCount": 11695
     },
     {
       "status": "M",
@@ -916,6 +1044,22 @@
       "byteCount": 8823
     },
     {
+      "status": "A",
+      "path": "tests/gateway-deployment.test.ts",
+      "mode": "100644",
+      "blob": "6ce313d519d80d2efee77b01547b3408e3de4e12",
+      "sha256": "2b05e6af0d58e1bc47a24b7cb6085b224617b14ead787999cac93ae247e5c2ee",
+      "byteCount": 11721
+    },
+    {
+      "status": "A",
+      "path": "tests/gateway-image.test.ts",
+      "mode": "100644",
+      "blob": "419fe215a5b329d911a02495602fe47ed14837b6",
+      "sha256": "7f0eaea084f0366ea2ab04e8b3e1b22ef48ddbb00d57cb964b0109800995d5a0",
+      "byteCount": 29230
+    },
+    {
       "status": "M",
       "path": "tests/identifier-hygiene.test.ts",
       "mode": "100644",
@@ -924,12 +1068,20 @@
       "byteCount": 2132
     },
     {
+      "status": "A",
+      "path": "tests/member-forwarder.test.ts",
+      "mode": "100644",
+      "blob": "2506025e1ef8043038cb9157f01a9c0c6ef03fb9",
+      "sha256": "0c5cd050cbb010fac70c787dd3a5634906dd94f42ab0785f2df718246c1c6459",
+      "byteCount": 29754
+    },
+    {
       "status": "M",
       "path": "tests/pending-verification.test.ts",
       "mode": "100644",
-      "blob": "613dba0bd7e807220ea353bd8267d868b91710c6",
-      "sha256": "722bffba4dddda62ccf39853f6e09c8c6a1af455deef68b6d0c71ae4f5d39bbd",
-      "byteCount": 17540
+      "blob": "93c20854d3de655a41c6a0b9f4e825d899db491f",
+      "sha256": "047574e6e7ebf447d075cca03d1ce52239e5f13afd8b87b83465b7683e958046",
+      "byteCount": 19160
     },
     {
       "status": "M",
