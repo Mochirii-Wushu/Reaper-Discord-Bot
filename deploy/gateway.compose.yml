@@ -1,0 +1,46 @@
+{
+  "name": "mochirii-reaper-gateway",
+  "services": {
+    "gateway": {
+      "image": "${REAPER_GATEWAY_IMAGE:?An approved digest-pinned image is required}",
+      "container_name": "mochirii-reaper-gateway",
+      "pull_policy": "never",
+      "restart": "on-failure:3",
+      "user": "65532:65532",
+      "read_only": true,
+      "env_file": [
+        { "path": "/etc/mochirii-reaper/gateway.env", "required": true, "format": "raw" }
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "REAPER_GALLERY_GATEWAY_ROLLBACK_ENABLED": "false",
+        "REAPER_HEALTH_STATE_PATH": "/tmp/mochirii-reaper-readiness.json",
+        "REAPER_HEALTH_HEARTBEAT_MS": "30000",
+        "REAPER_HEALTH_MAX_AGE_MS": "90000",
+        "REAPER_MEMBER_SYNC_STATE_PATH": "/var/lib/reaper/member-sync"
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/var/lib/mochirii-reaper/gateway",
+          "target": "/var/lib/reaper",
+          "read_only": false,
+          "bind": { "create_host_path": false }
+        }
+      ],
+      "tmpfs": ["/tmp:rw,noexec,nosuid,nodev,size=16777216,mode=0700,uid=65532,gid=65532"],
+      "cap_drop": ["ALL"],
+      "security_opt": ["no-new-privileges:true"],
+      "mem_limit": "256m",
+      "memswap_limit": "256m",
+      "cpus": "0.50",
+      "pids_limit": 64,
+      "shm_size": "1m",
+      "stop_grace_period": "20s",
+      "logging": {
+        "driver": "local",
+        "options": { "max-size": "5m", "max-file": "3" }
+      }
+    }
+  }
+}

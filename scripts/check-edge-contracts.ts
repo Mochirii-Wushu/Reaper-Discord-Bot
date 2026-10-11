@@ -11,6 +11,7 @@ import {
 } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateGatewayWorkflowSet } from "./check-gateway-image.js";
 
 type RuntimeContract = {
   schemaVersion: number;
@@ -2154,14 +2155,16 @@ sameSet(consumer.retainedByWebsite, [
   "current-production-writer-until-approved-cutover",
 ], "Website-retained ownership");
 
-const workflowSource = filesUnder(join(root, ".github", "workflows"))
-  .map((path) => readFileSync(path, "utf8")).join("\n");
-if (
-  /supabase\s+(?:functions\s+deploy|db\s+push)|vercel\s+deploy|docker\s+push|ghcr\.io/iu
-    .test(workflowSource)
-) {
-  fail("Repository workflows must remain CI-only and provider-neutral.");
-}
+const publicationErrors = validateGatewayWorkflowSet(
+  Object.fromEntries(
+    filesUnder(join(root, ".github", "workflows")).map((path) => [
+      relative(root, path).replaceAll("\\", "/"),
+      readFileSync(path, "utf8"),
+    ]),
+  ),
+  json("contracts/gateway-image-publication.v1.json"),
+);
+if (publicationErrors.length) fail(publicationErrors.join("\n"));
 const environment = read(".env.example");
 if (
   !environment.includes(

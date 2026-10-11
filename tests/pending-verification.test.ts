@@ -1,458 +1,245 @@
 import { describe, expect, test } from "bun:test";
 import { loadConfig, type ReaperConfig } from "../src/config.js";
 import {
-  memberRolesChanged,
-  syncPendingVerificationMember,
-  type PendingVerificationMemberLike,
+  createMemberSyncRequest, deliverMemberSyncRequest, memberRolesChanged, validateMemberSyncRequest,
+  type PendingVerificationMemberLike, type FetchLike,
 } from "../src/pending-verification.js";
 import { SYNTHETIC_DISCORD_IDS } from "./discord-fixtures.js";
 
 const baseConfig: ReaperConfig = {
-  discordBotToken: "test-token",
-  discordGuildId: SYNTHETIC_DISCORD_IDS.guild,
-  galleryGatewayRollbackEnabled: false,
-  welcomeDmEnabled: true,
+  discordBotToken: "unused-offline", discordGuildId: SYNTHETIC_DISCORD_IDS.guild,
+  galleryGatewayRollbackEnabled: false, welcomeDmEnabled: true,
   pendingVerificationSyncEnabled: true,
-  pendingVerificationSyncUrl: "https://functions.example/reaper-discord-member-sync",
-  pendingVerificationSyncSecret: "local-sync-secret",
-  pendingVerificationSyncTimeoutMs: 5000,
+  pendingVerificationSyncUrl: "https://functions.example.test/functions/v1/reaper-discord-member-sync",
+  pendingVerificationSyncSecret: "unused-offline-secret", pendingVerificationSyncTimeoutMs: 5000,
   pendingVerificationSyncMaxAttempts: 2,
 };
-
-const quietLogger = {
-  log: () => undefined,
-  warn: () => undefined,
-};
-
-function member(overrides: {
-  guildId?: string;
-  userId?: string;
-  bot?: boolean;
-  roles?: string[];
-} = {}): PendingVerificationMemberLike {
-  return {
-    guild: {
-      id: overrides.guildId || SYNTHETIC_DISCORD_IDS.guild,
-    },
-    user: {
-      id: overrides.userId || SYNTHETIC_DISCORD_IDS.member,
-      bot: overrides.bot || false,
-    },
-    roles: {
-      cache: new Map((overrides.roles || [SYNTHETIC_DISCORD_IDS.roleOne]).map((roleId) => [roleId, true])),
-    },
+const counts = { discordWrites: 1, dbWrites: 2, staleRecordsCleared: 0 };
+const noWait = async () => undefined;
+function member(roles: string[] = [SYNTHETIC_DISCORD_IDS.roleOne]): PendingVerificationMemberLike {
+  return { guild: { id: SYNTHETIC_DISCORD_IDS.guild }, user: { id: SYNTHETIC_DISCORD_IDS.member },
+    roles: { cache: new Map(roles.map((id) => [id, true])) } };
+}
+function reply(requestId: string, status: string, httpStatus?: number): Response {
+  return Response.json({ ok: true, request_id: requestId, status,
+    result: status === "completed" ? counts : null },
+  { status: httpStatus ?? (["blocked", "rejected"].includes(status) ? 409 : 200) });
+}
+function scripted(handler: (method: string, id: string, init: RequestInit, call: number) => Response | Promise<Response>) {
+  const calls: { url: string; init: RequestInit }[] = [];
+  const fetch: FetchLike = async (input, init = {}) => {
+    const url = String(input);
+    calls.push({ url, init });
+    const id = init.method === "POST" ? JSON.parse(String(init.body)).request_id
+      : new URL(url).searchParams.get("request_id")!;
+    return handler(init.method || "GET", id, init, calls.length);
   };
+  return { calls, fetch };
 }
 
-describe("syncPendingVerificationMember", () => {
-  test("is disabled by default and does not post", async () => {
-    let posted = false;
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberAdd",
-      { ...baseConfig, pendingVerificationSyncEnabled: false },
-      quietLogger,
-      async () => {
-        posted = true;
-        return new Response("{}");
-      },
-    );
-
-    expect(result).toBe("disabled");
-    expect(posted).toBe(false);
+describe("durable member forwarding protocol", () => {
+  test("creates one canonical UUID-bound immutable request and snapshots role order", () => {
+    const roles = [SYNTHETIC_DISCORD_IDS.roleTwo, SYNTHETIC_DISCORD_IDS.roleOne];
+    const request = createMemberSyncRequest(member(roles), "guildMemberUpdate", 123);
+    const body = JSON.parse(request.body);
+    expect(request.requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(body).toEqual({ request_id: request.requestId, event_type: "guildMemberUpdate",
+      guild_id: SYNTHETIC_DISCORD_IDS.guild, discord_user_id: SYNTHETIC_DISCORD_IDS.member,
+      roles: [...roles].sort(), gateway_sequence: 123, occurred_at: expect.any(String) });
+    expect(validateMemberSyncRequest(request)).toEqual(request);
+    for (const mutation of [
+      { ...request, requestId: "00000000-0000-0000-0000-000000000000" },
+      { ...request, body: request.body + " " },
+      { ...request, body: JSON.stringify({ ...body, roles: [...body.roles, body.roles[0]] }) },
+      { ...request, body: JSON.stringify({ ...body, gateway_sequence: -1 }) },
+      { ...request, body: JSON.stringify({ ...body, discord_user_id: (2n ** 64n).toString() }) },
+    ]) expect(() => validateMemberSyncRequest(mutation)).toThrow();
   });
 
-  test("posts redacted member event payload to the private Edge Function", async () => {
-    const requests: Request[] = [];
-    const result = await syncPendingVerificationMember(
-      member({ roles: [SYNTHETIC_DISCORD_IDS.roleTwo, SYNTHETIC_DISCORD_IDS.roleOne] }),
-      "guildMemberUpdate",
-      baseConfig,
-      quietLogger,
-      async (input, init) => {
-        requests.push(new Request(input, init));
-        expect(init?.signal).toBeInstanceOf(AbortSignal);
-        return new Response(JSON.stringify({ ok: true, status: "applied", discordWriteCount: 1 }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
-      },
-      123,
-    );
+  test("reads status before POST and accepts only strict completed receipts", async () => {
+    const request = createMemberSyncRequest(member(), "guildMemberAdd");
+    const mock = scripted((method, id) => reply(id, method === "GET" ? "missing" : "completed"));
+    expect(await deliverMemberSyncRequest(request, baseConfig, mock.fetch, noWait)).toEqual({ status: "completed", result: counts });
+    expect(mock.calls.map(({ init }) => init.method)).toEqual(["GET", "POST"]);
+    expect(mock.calls[0]?.url).toBe(baseConfig.pendingVerificationSyncUrl + "/status?request_id=" + request.requestId);
+    expect(mock.calls[0]?.init.body).toBeUndefined();
+    expect(mock.calls[1]?.init.body).toBe(request.body);
+    for (const { init } of mock.calls) {
+      expect(init.redirect).toBe("error");
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+      expect(new Headers(init.headers).get("x-mochirii-reaper-member-sync-secret")).toBe(baseConfig.pendingVerificationSyncSecret);
+    }
+  });
 
-    expect(result).toBe("posted");
-    const request = requests[0];
-    expect(request?.url).toBe(baseConfig.pendingVerificationSyncUrl);
-    expect(request?.headers.get("x-mochirii-reaper-member-sync-secret")).toBe("local-sync-secret");
-    expect(await request?.json()).toEqual({
-      event_type: "guildMemberUpdate",
-      guild_id: SYNTHETIC_DISCORD_IDS.guild,
-      discord_user_id: SYNTHETIC_DISCORD_IDS.member,
-      roles: [SYNTHETIC_DISCORD_IDS.roleOne, SYNTHETIC_DISCORD_IDS.roleTwo],
-      gateway_sequence: 123,
-      occurred_at: expect.any(String),
+  test("completed recovery performs no POST, even after a process restart", async () => {
+    const request = createMemberSyncRequest(member(), "guildMemberUpdate");
+    const mock = scripted((_method, id) => reply(id, "completed"));
+    expect((await deliverMemberSyncRequest(request, baseConfig, mock.fetch)).status).toBe("completed");
+    expect(mock.calls.map(({ init }) => init.method)).toEqual(["GET"]);
+  });
+
+  test("a lost POST acknowledgement is resolved by status without replay", async () => {
+    for (const failure of ["network", "500", "408", "429", "malformed-success"]) {
+      const request = createMemberSyncRequest(member(), "guildMemberUpdate");
+      const mock = scripted((method, id, _init, call) => {
+        if (call === 1) return reply(id, "missing");
+        if (method === "GET") return reply(id, "completed");
+        if (failure === "network") throw new TypeError("private response must not be logged");
+        return failure === "malformed-success" ? Response.json({ ok: true, status: "preview" })
+          : Response.json({ ok: false }, { status: Number(failure) });
+      });
+      expect((await deliverMemberSyncRequest(request, baseConfig, mock.fetch, noWait)).status).toBe("completed");
+      expect(mock.calls.filter(({ init }) => init.method === "POST")).toHaveLength(1);
+    }
+  });
+
+  test("resends only the exact original UUID/body after authenticated missing", async () => {
+    const request = createMemberSyncRequest(member(), "guildMemberAdd");
+    const mock = scripted((method, id, _init, call) => {
+      if (method === "GET") return reply(id, "missing");
+      if (call === 2) throw new TypeError("lost pre-acquisition wire");
+      return reply(id, "completed");
     });
+    expect((await deliverMemberSyncRequest(request, baseConfig, mock.fetch, noWait)).status).toBe("completed");
+    const bodies = mock.calls.filter(({ init }) => init.method === "POST").map(({ init }) => init.body);
+    expect(bodies).toEqual([request.body, request.body]);
   });
 
-  test("retries transient Edge responses with one immutable payload and redacted logs", async () => {
-    const warnings: unknown[] = [];
-    const logs: unknown[] = [];
-    const requestBodies: string[] = [];
-    const retryDelays: number[] = [];
-    let attempts = 0;
-
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberAdd",
-      { ...baseConfig, pendingVerificationSyncMaxAttempts: 2 },
-      {
-        log: (...args: unknown[]) => logs.push(args),
-        warn: (...args: unknown[]) => warnings.push(args),
-      },
-      async (_input, init) => {
-        attempts += 1;
-        requestBodies.push(String(init?.body));
-        if (attempts === 1) return new Response(JSON.stringify({ ok: false }), { status: 503 });
-        return new Response(JSON.stringify({ ok: true, status: "preview", conflictCount: 0 }), { status: 200 });
-      },
-      null,
-      async (delayMs) => {
-        retryDelays.push(delayMs);
-      },
-    );
-
-    expect(result).toBe("posted");
-    expect(attempts).toBe(2);
-    expect(requestBodies).toHaveLength(2);
-    expect(requestBodies[0]).toBe(requestBodies[1]);
-    expect(retryDelays).toEqual([250]);
-    expect(JSON.stringify(warnings)).toContain("retrying");
-    const logText = JSON.stringify([...warnings, ...logs]);
-    expect(logText).not.toContain(baseConfig.pendingVerificationSyncSecret);
-    expect(logText).not.toContain(SYNTHETIC_DISCORD_IDS.guild);
-    expect(logText).not.toContain(SYNTHETIC_DISCORD_IDS.member);
-    expect(logText).toContain(`...${SYNTHETIC_DISCORD_IDS.guild.slice(-4)}`);
-    expect(logText).toContain(`...${SYNTHETIC_DISCORD_IDS.member.slice(-4)}`);
+  test("busy waits within the declared budget, then recovers through status", async () => {
+    const request = createMemberSyncRequest(member(), "guildMemberAdd");
+    const waits: number[] = [];
+    const mock = scripted((method, id, _init, call) => method === "GET" ? reply(id, "missing")
+      : call === 2 ? Response.json({ ok: false, request_id: id, status: "busy", result: null, retry_after_ms: 1000 }, { status: 409 })
+      : reply(id, "completed"));
+    expect((await deliverMemberSyncRequest(request, baseConfig, mock.fetch, async (ms) => { waits.push(ms); })).status).toBe("completed");
+    expect(waits).toEqual([1000]);
+    expect(mock.calls.map(({ init }) => init.method)).toEqual(["GET", "POST", "GET", "POST"]);
   });
 
-  test("honors a bounded Retry-After response before retrying", async () => {
-    const retryDelays: number[] = [];
-    let attempts = 0;
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberUpdate",
-      baseConfig,
-      quietLogger,
-      async () => {
-        attempts += 1;
-        if (attempts === 1) {
-          return new Response("", { status: 429, headers: { "Retry-After": "1" } });
-        }
-        return new Response(JSON.stringify({ ok: true, status: "applied" }), { status: 200 });
-      },
-      null,
-      async (delayMs) => {
-        retryDelays.push(delayMs);
-      },
-    );
-
-    expect(result).toBe("posted");
-    expect(attempts).toBe(2);
-    expect(retryDelays).toEqual([1000]);
+  test("reserved/writing stay pending and never admit POST or timed takeover", async () => {
+    for (const state of ["reserved", "writing"]) {
+      const request = createMemberSyncRequest(member(), "guildMemberAdd");
+      const mock = scripted((_method, id) => reply(id, state));
+      expect((await deliverMemberSyncRequest(request, baseConfig, mock.fetch, noWait)).status).toBe("pending");
+      expect(mock.calls.map(({ init }) => init.method)).toEqual(["GET", "GET"]);
+    }
   });
 
-  test("fails closed when Retry-After exceeds the retry-delay budget", async () => {
-    const warnings: unknown[] = [];
-    let attempts = 0;
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberUpdate",
-      baseConfig,
-      {
-        log: () => undefined,
-        warn: (...args: unknown[]) => warnings.push(args),
-      },
-      async () => {
-        attempts += 1;
-        return new Response("", { status: 429, headers: { "Retry-After": "6" } });
-      },
-      null,
-      async () => {
-        throw new Error("wait must not run");
-      },
-    );
-
-    expect(result).toBe("post_failed");
-    expect(attempts).toBe(1);
-    expect(JSON.stringify(warnings)).toContain("retry_after_exceeds_budget");
+  test("disabled waits within its bound and recovers with the same immutable request", async () => {
+    const request = createMemberSyncRequest(member(), "guildMemberAdd");
+    const waits: number[] = [];
+    const mock = scripted((method, id, _init, call) => method === "GET" ? reply(id, "missing")
+      : call === 2 ? Response.json({ ok: false, request_id: id, status: "disabled", result: null, retry_after_ms: 1000 }, { status: 409 })
+      : reply(id, "completed"));
+    expect((await deliverMemberSyncRequest(request, baseConfig, mock.fetch, async (ms) => { waits.push(ms); })).status).toBe("completed");
+    expect(waits).toEqual([1000]);
+    expect(mock.calls.map(({ init }) => init.method)).toEqual(["GET", "POST", "GET", "POST"]);
+    expect(mock.calls.filter(({ init }) => init.method === "POST").map(({ init }) => init.body)).toEqual([request.body, request.body]);
   });
 
-  test("sanitizes the successful response summary before logging", async () => {
-    const logs: unknown[] = [];
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberAdd",
-      baseConfig,
-      {
-        log: (...args: unknown[]) => logs.push(args),
-        warn: () => undefined,
-      },
-      async () => new Response(JSON.stringify({
-        ok: true,
-        status: `applied-${baseConfig.pendingVerificationSyncSecret}`,
-        discordWriteCount: Number.MAX_SAFE_INTEGER,
-        registryWriteCount: -1,
-        conflictCount: "not-a-count",
-      }), { status: 200 }),
-    );
-
-    expect(result).toBe("posted");
-    const logText = JSON.stringify(logs);
-    expect(logText).not.toContain(baseConfig.pendingVerificationSyncSecret);
-    expect(logText).toContain('"status":"unknown"');
-    expect(logText).toContain('"discordWriteCount":0');
-    expect(logText).toContain('"registryWriteCount":0');
-    expect(logText).toContain('"conflictCount":0');
+  test("disabled remains pending when maintenance outlasts the bounded pass", async () => {
+    const request = createMemberSyncRequest(member(), "guildMemberAdd");
+    const waits: number[] = [];
+    const mock = scripted((method, id) => method === "GET" ? reply(id, "missing")
+      : Response.json({ ok: false, request_id: id, status: "disabled", result: null, retry_after_ms: 1000 }, { status: 409 }));
+    expect(await deliverMemberSyncRequest(request, baseConfig, mock.fetch, async (ms) => { waits.push(ms); })).toEqual({
+      status: "pending", reason: "receipt_not_completed", retryAfterMs: 5000,
+    });
+    expect(waits).toEqual([1000]);
+    expect(mock.calls.map(({ init }) => init.method)).toEqual(["GET", "POST", "GET", "POST"]);
   });
 
-  test("does not read a response whose declared body exceeds the summary limit", async () => {
-    const logs: unknown[] = [];
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberAdd",
-      baseConfig,
-      {
-        log: (...args: unknown[]) => logs.push(args),
-        warn: () => undefined,
-      },
-      async () => new Response(`{"status":"${baseConfig.pendingVerificationSyncSecret}"}`, {
-        status: 200,
-        headers: { "Content-Length": "16385" },
-      }),
-    );
-
-    expect(result).toBe("posted");
-    const logText = JSON.stringify(logs);
-    expect(logText).not.toContain(baseConfig.pendingVerificationSyncSecret);
-    expect(logText).toContain('"status":"unknown"');
+  test("blocked/rejected/identity conflicts quarantine instead of replay", async () => {
+    for (const state of ["blocked", "rejected", "identity_conflict"]) {
+      const request = createMemberSyncRequest(member(), "guildMemberAdd");
+      const mock = scripted((method, id) => {
+        if (state === "blocked" || state === "rejected") return reply(id, state);
+        if (method === "GET") return reply(id, "missing");
+        return Response.json({ ok: false, request_id: id, status: state, result: null }, { status: 409 });
+      });
+      expect(await deliverMemberSyncRequest(request, baseConfig, mock.fetch, noWait)).toEqual({ status: "blocked", reason: state });
+      expect(mock.calls.filter(({ init }) => init.method === "POST")).toHaveLength(state === "blocked" || state === "rejected" ? 0 : 1);
+    }
   });
 
-  test("stops reading a chunked response after the summary byte limit", async () => {
-    const logs: unknown[] = [];
+  test("rejects false success, wrong identity, wrong counts, duplicate keys and extra metadata", async () => {
+    const request = createMemberSyncRequest(member(), "guildMemberAdd");
+    const good = { ok: true, request_id: request.requestId, status: "completed", result: counts };
+    const mutants: unknown[] = [
+      {}, { ...good, ok: false }, { ...good, status: "applied" }, { ...good, status: "preview" },
+      { ...good, request_id: "00000000-0000-4000-8000-000000000000" }, { ...good, result: null },
+      { ...good, secret: "must never enter logs" }, { ...good, result: { ...counts, discordWrites: "1" } },
+      { ...good, result: { ...counts, dbWrites: -1 } }, { ...good, result: { ...counts, staleRecordsCleared: 10001 } },
+      { ...good, result: { discordWrites: 1 } },
+    ];
+    for (const mutant of mutants) {
+      const mock = scripted(() => Response.json(mutant));
+      expect((await deliverMemberSyncRequest(request, baseConfig, mock.fetch, noWait)).status).toBe("pending");
+      expect(mock.calls.every(({ init }) => init.method === "GET")).toBe(true);
+    }
+    for (const text of [
+      JSON.stringify(good).replace('"ok":true', '"ok":false,"ok":true'),
+      JSON.stringify(good).replace('"ok"', '"\\u006f\\u006b"'),
+      "", "[]", "not-json",
+    ]) {
+      const mock = scripted(() => new Response(text, { headers: { "Content-Type": "application/json" } }));
+      expect((await deliverMemberSyncRequest(request, baseConfig, mock.fetch, noWait)).status).toBe("pending");
+    }
+  });
+
+  test("rejects mismatched HTTP state, redirects and response URL changes", async () => {
+    const request = createMemberSyncRequest(member(), "guildMemberAdd");
+    for (const variant of ["http", "redirected", "url", "type"]) {
+      const mock = scripted((_method, id) => {
+        const response = reply(id, "completed", variant === "http" ? 202 : 200);
+        if (variant === "redirected") Object.defineProperty(response, "redirected", { value: true });
+        if (variant === "url") Object.defineProperty(response, "url", { value: "https://attacker.test/status" });
+        if (variant === "type") response.headers.set("Content-Type", "text/html");
+        return response;
+      });
+      expect((await deliverMemberSyncRequest(request, baseConfig, mock.fetch, noWait)).status).toBe("pending");
+      expect(mock.calls.every(({ init }) => init.method === "GET")).toBe(true);
+    }
+  });
+
+  test("bounds declared/chunked bodies and never awaits unbounded cancellation", async () => {
+    const request = createMemberSyncRequest(member(), "guildMemberAdd");
+    for (const declared of [true, false]) {
+      let cancelled = false;
+      const mock = scripted(() => new Response(new ReadableStream({
+        start(controller) { controller.enqueue(new Uint8Array(20000)); },
+        cancel() { cancelled = true; return new Promise(() => undefined); },
+      }), { headers: { "Content-Type": "application/json", ...(declared ? { "Content-Length": "16385" } : {}) } }));
+      expect((await deliverMemberSyncRequest(request, { ...baseConfig, pendingVerificationSyncMaxAttempts: 1 }, mock.fetch)).status).toBe("pending");
+      expect(cancelled).toBe(true);
+      expect(mock.calls).toHaveLength(1);
+    }
+  });
+
+  test("keeps timeout through stalled body and never posts on uncertain status", async () => {
+    const request = createMemberSyncRequest(member(), "guildMemberAdd");
     let cancelled = false;
-    const body = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(new Uint8Array(10_000));
-        controller.enqueue(new Uint8Array(10_000));
-      },
-      cancel() {
-        cancelled = true;
-      },
-    });
-
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberAdd",
-      baseConfig,
-      {
-        log: (...args: unknown[]) => logs.push(args),
-        warn: () => undefined,
-      },
-      async () => new Response(body, { status: 200 }),
-    );
-
-    await Promise.resolve();
-    expect(result).toBe("posted");
+    const mock = scripted(() => new Response(new ReadableStream({ cancel() { cancelled = true; return new Promise(() => undefined); } }),
+      { headers: { "Content-Type": "application/json" } }));
+    expect((await deliverMemberSyncRequest(request, { ...baseConfig, pendingVerificationSyncTimeoutMs: 10,
+      pendingVerificationSyncMaxAttempts: 1 }, mock.fetch)).status).toBe("pending");
     expect(cancelled).toBe(true);
-    expect(JSON.stringify(logs)).toContain('"status":"unknown"');
+    expect(mock.calls).toHaveLength(1);
   });
 
-  test("does not retry non-transient Edge conflicts", async () => {
-    let attempts = 0;
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberAdd",
-      { ...baseConfig, pendingVerificationSyncMaxAttempts: 3 },
-      quietLogger,
-      async () => {
-        attempts += 1;
-        return new Response(JSON.stringify({ ok: false, conflictCount: 1 }), { status: 409 });
-      },
-    );
-
-    expect(result).toBe("post_failed");
-    expect(attempts).toBe(1);
-  });
-
-  test("handles fetch failures without logging secrets", async () => {
-    const warnings: unknown[] = [];
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberUpdate",
-      { ...baseConfig, pendingVerificationSyncMaxAttempts: 1 },
-      {
-        log: () => undefined,
-        warn: (...args: unknown[]) => warnings.push(args),
-      },
-      async () => {
-        throw new TypeError(`network failed for ${baseConfig.pendingVerificationSyncSecret}`);
-      },
-    );
-
-    expect(result).toBe("post_failed");
-    const warningText = JSON.stringify(warnings);
-    expect(warningText).toContain("TypeError");
-    expect(warningText).not.toContain(baseConfig.pendingVerificationSyncSecret);
-  });
-
-  test("aborts an attempt after the configured timeout", async () => {
-    const warnings: unknown[] = [];
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberUpdate",
-      {
-        ...baseConfig,
-        pendingVerificationSyncTimeoutMs: 10,
-        pendingVerificationSyncMaxAttempts: 1,
-      },
-      {
-        log: () => undefined,
-        warn: (...args: unknown[]) => warnings.push(args),
-      },
-      async (_input, init) => new Promise((_resolve, reject) => {
-        init?.signal?.addEventListener("abort", () => {
-          reject(new DOMException("request timed out", "AbortError"));
-        }, { once: true });
-      }),
-    );
-
-    expect(result).toBe("post_failed");
-    expect(JSON.stringify(warnings)).toContain("AbortError");
-  });
-
-  test("does not retry a timed-out request when remote completion is unknown", async () => {
-    const warnings: unknown[] = [];
-    let attempts = 0;
-    let waits = 0;
-
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberUpdate",
-      {
-        ...baseConfig,
-        pendingVerificationSyncTimeoutMs: 10,
-        pendingVerificationSyncMaxAttempts: 3,
-      },
-      {
-        log: () => undefined,
-        warn: (...args: unknown[]) => warnings.push(args),
-      },
-      async (_input, init) => {
-        attempts += 1;
-        return new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener("abort", () => {
-            reject(new DOMException("request timed out", "AbortError"));
-          }, { once: true });
-        });
-      },
-      null,
-      async () => {
-        waits += 1;
-      },
-    );
-
-    expect(result).toBe("post_failed");
-    expect(attempts).toBe(1);
-    expect(waits).toBe(0);
-    expect(JSON.stringify(warnings)).toContain("request_completion_unknown");
-  });
-
-  test("keeps the attempt timeout active while reading the response body", async () => {
-    const warnings: unknown[] = [];
-    let cancelled = false;
-    let pendingChunk: ReturnType<typeof setTimeout> | null = null;
-    const body = new ReadableStream<Uint8Array>({
-      start(controller) {
-        pendingChunk = setTimeout(() => {
-          controller.enqueue(new TextEncoder().encode('{"status":"applied"}'));
-          controller.close();
-        }, 100);
-      },
-      cancel() {
-        if (pendingChunk) clearTimeout(pendingChunk);
-        cancelled = true;
-      },
-    });
-
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberUpdate",
-      {
-        ...baseConfig,
-        pendingVerificationSyncTimeoutMs: 10,
-        pendingVerificationSyncMaxAttempts: 1,
-      },
-      {
-        log: () => undefined,
-        warn: (...args: unknown[]) => warnings.push(args),
-      },
-      async () => new Response(body, { status: 200 }),
-    );
-
-    await Promise.resolve();
-    expect(result).toBe("post_failed");
-    expect(cancelled).toBe(true);
-    expect(JSON.stringify(warnings)).toContain("AbortError");
-  });
-
-  test("ignores bots and other guilds", async () => {
-    let posted = false;
-    const fetchImpl = async () => {
-      posted = true;
-      return new Response("{}");
-    };
-
-    expect(await syncPendingVerificationMember(member({ bot: true }), "guildMemberAdd", baseConfig, quietLogger, fetchImpl)).toBe("ignored_bot");
-    expect(
-      await syncPendingVerificationMember(
-        member({ guildId: SYNTHETIC_DISCORD_IDS.otherGuild }),
-        "guildMemberAdd",
-        baseConfig,
-        quietLogger,
-        fetchImpl,
-      ),
-    ).toBe("ignored_guild");
-    expect(posted).toBe(false);
-  });
-
-  test("reports failed Edge responses without throwing", async () => {
-    const result = await syncPendingVerificationMember(
-      member(),
-      "guildMemberAdd",
-      baseConfig,
-      quietLogger,
-      async () => new Response(JSON.stringify({ ok: false }), { status: 409 }),
-    );
-
-    expect(result).toBe("post_failed");
+  test("configuration hold performs no network request", async () => {
+    const request = createMemberSyncRequest(member(), "guildMemberAdd");
+    const mock = scripted(() => { throw new Error("unexpected network"); });
+    expect((await deliverMemberSyncRequest(request, { ...baseConfig, pendingVerificationSyncEnabled: false }, mock.fetch)).status).toBe("blocked");
+    expect((await deliverMemberSyncRequest(request, { ...baseConfig, discordGuildId: SYNTHETIC_DISCORD_IDS.otherGuild }, mock.fetch)).status).toBe("blocked");
+    expect(mock.calls).toHaveLength(0);
   });
 });
 
 describe("memberRolesChanged", () => {
   test("compares role sets without depending on role order", () => {
-    expect(
-      memberRolesChanged(
-        member({ roles: ["1", "2"] }),
-        member({ roles: ["2", "1"] }),
-      ),
-    ).toBe(false);
-
-    expect(
-      memberRolesChanged(
-        member({ roles: ["1"] }),
-        member({ roles: ["1", "2"] }),
-      ),
-    ).toBe(true);
+    expect(memberRolesChanged(member(["1", "2"]), member(["2", "1"]))).toBe(false);
+    expect(memberRolesChanged(member(["1"]), member(["1", "2"]))).toBe(true);
   });
 });
 
@@ -486,7 +273,7 @@ describe("loadConfig pending verification sync", () => {
       DISCORD_BOT_TOKEN: "token",
       DISCORD_GUILD_ID: SYNTHETIC_DISCORD_IDS.guild,
       REAPER_PENDING_VERIFICATION_SYNC_ENABLED: "true",
-      REAPER_PENDING_VERIFICATION_SYNC_URL: "https://example.com/functions/v1/reaper-discord-member-sync",
+      REAPER_PENDING_VERIFICATION_SYNC_URL: "https://functions.example.test/functions/v1/reaper-discord-member-sync",
       REAPER_PENDING_VERIFICATION_SYNC_SECRET: "secret",
       REAPER_PENDING_VERIFICATION_SYNC_TIMEOUT_MS: "2500",
       REAPER_PENDING_VERIFICATION_SYNC_MAX_ATTEMPTS: "3",
@@ -496,14 +283,29 @@ describe("loadConfig pending verification sync", () => {
     expect(config.pendingVerificationSyncMaxAttempts).toBe(3);
   });
 
-  test("requires an absolute credential-free HTTPS sync target when enabled", () => {
+  test("requires a canonical credential-free HTTPS member-sync function target", () => {
     for (const target of [
       "/functions/v1/reaper-discord-member-sync",
-      "//example.com/functions/v1/reaper-discord-member-sync",
-      "http://example.com/functions/v1/reaper-discord-member-sync",
-      "https://user@example.com/functions/v1/reaper-discord-member-sync",
-      "https://user:password@example.com/functions/v1/reaper-discord-member-sync",
-      "https://example.com@attacker.invalid/functions/v1/reaper-discord-member-sync",
+      "//functions.example.test/functions/v1/reaper-discord-member-sync",
+      "http://functions.example.test/functions/v1/reaper-discord-member-sync",
+      "https://user@functions.example.test/functions/v1/reaper-discord-member-sync",
+      "https://user:password@functions.example.test/functions/v1/reaper-discord-member-sync",
+      "https://functions.example.test@attacker.test/functions/v1/reaper-discord-member-sync",
+      "https://functions.example.test/functions/v1/other-function",
+      "https://functions.example.test/functions/v1/reaper-discord-member-sync/",
+      "https://functions.example.test/functions/v1/reaper-discord-member-sync?",
+      "https://functions.example.test/functions/v1/reaper-discord-member-sync#",
+      "https://functions.example.test/functions/v1/reaper-discord-member-sync?token=x",
+      "https://functions.example.test/functions/v1/reaper-discord-member-sync#fragment",
+      "https://functions.example.test:443/functions/v1/reaper-discord-member-sync",
+      "https://functions.example.test:8443/functions/v1/reaper-discord-member-sync",
+      "https://FUNCTIONS.example.test/functions/v1/reaper-discord-member-sync",
+      "https://127.0.0.1/functions/v1/reaper-discord-member-sync",
+      "https://[::1]/functions/v1/reaper-discord-member-sync",
+      "https://localhost/functions/v1/reaper-discord-member-sync",
+      "https://worker.local/functions/v1/reaper-discord-member-sync",
+      "https://functions.example.test/functions/v1/%72eaper-discord-member-sync",
+      "https://functions.example.test/functions/./v1/reaper-discord-member-sync",
     ]) {
       expect(() => loadConfig({
         DISCORD_BOT_TOKEN: "token",
@@ -511,7 +313,7 @@ describe("loadConfig pending verification sync", () => {
         REAPER_PENDING_VERIFICATION_SYNC_ENABLED: "true",
         REAPER_PENDING_VERIFICATION_SYNC_URL: target,
         REAPER_PENDING_VERIFICATION_SYNC_SECRET: "secret",
-      })).toThrow("absolute HTTPS URL without embedded credentials");
+      })).toThrow("canonical absolute HTTPS URL without embedded credentials");
     }
   });
 

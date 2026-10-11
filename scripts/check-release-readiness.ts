@@ -17,6 +17,7 @@ type GatewayRelease = {
   entrypoint: string;
   toolchain: Record<string, string>;
   welcomeDmSha256: string;
+  runtime: Record<string, boolean>;
   releaseRequirements: string[];
   activationBoundary: Record<string, boolean>;
 };
@@ -211,6 +212,20 @@ if (
   release.welcomeDmSha256 !== welcomeHash
 ) fail("Gateway release contract or approved welcome message drifted.");
 
+function gatewayRuntimeValid(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const runtime = value as Record<string, unknown>;
+  return JSON.stringify(Object.keys(runtime).sort()) === JSON.stringify([
+    "automaticRestartRequired", "persistentGatewayRequired", "statefulApplicationData",
+  ]) && Object.values(runtime).every((flag) => flag === true);
+}
+if (!gatewayRuntimeValid(release.runtime)) {
+  fail("Gateway runtime requires persistent supervision and durable private forwarding state.");
+}
+if ([null, {}, [], ...Object.keys(release.runtime).map((key) => ({ ...release.runtime, [key]: false })),
+  { ...release.runtime, statefulApplicationData: "true" }, { ...release.runtime, extra: true },
+].some(gatewayRuntimeValid)) fail("Gateway runtime hostile contract was accepted.");
+
 const requirements = new Set(release.releaseRequirements);
 for (
   const requirement of [
@@ -237,7 +252,7 @@ const submitSource = read("src/submit.ts");
 const environmentSource = read(".env.example");
 const registrationSource = read("src/register-commands.ts");
 const expectedIndexSha256 =
-  "c6cdba3c9908471c1507f76aa15071b4a4f32727d0944061b002f3664eee251c";
+  "ab5bcfe1d30dffdb80378e9c3d096637f9ac467321fce9a2f2215f7d7b138eb6";
 const expectedRegistrationSha256 =
   "a4d92870238c746bc4c6bae01acc2be1c95db6984a9f1db1a7cd7e75b3cabc1b";
 

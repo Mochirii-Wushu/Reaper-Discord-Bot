@@ -1,0 +1,18 @@
+[Unit]
+Description=Mochirii Reaper Gateway private health and bounded recovery
+Requisite=mochirii-reaper-gateway.service
+After=mochirii-reaper-gateway.service
+PartOf=mochirii-reaper-gateway.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/mochirii-reaper/gateway-release.env
+ExecStart=/bin/sh /opt/mochirii-reaper/deploy/gateway-health.sh
+StateDirectory=mochirii-reaper-gateway-health
+StateDirectoryMode=0700
+TimeoutStartSec=45
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes

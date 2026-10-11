@@ -78,21 +78,27 @@ function optionalInteger(
   return parsed;
 }
 
-function validatePendingVerificationSyncUrl(value: string): void {
+export function pendingVerificationSyncEndpoint(value: string): string {
+  const invalid = () => new Error(
+    "REAPER_PENDING_VERIFICATION_SYNC_URL must be a canonical absolute HTTPS URL without embedded credentials, query, or fragment, ending in /functions/v1/reaper-discord-member-sync.",
+  );
+  if (!value || value !== value.trim() || value.length > 2048) throw invalid();
   let url: URL;
   try {
     url = new URL(value);
   } catch {
-    throw new Error(
-      "REAPER_PENDING_VERIFICATION_SYNC_URL must be an absolute HTTPS URL without embedded credentials.",
-    );
+    throw invalid();
   }
 
-  if (url.protocol !== "https:" || url.username || url.password) {
-    throw new Error(
-      "REAPER_PENDING_VERIFICATION_SYNC_URL must be an absolute HTTPS URL without embedded credentials.",
-    );
-  }
+  if (
+    url.protocol !== "https:" || url.username || url.password || url.port ||
+    url.search || url.hash || value.includes("?") || value.includes("#") ||
+    url.pathname !== "/functions/v1/reaper-discord-member-sync" ||
+    !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]*$/u.test(url.hostname) ||
+    url.hostname.endsWith(".localhost") || url.hostname.endsWith(".local") ||
+    value !== url.href
+  ) throw invalid();
+  return url.href;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
@@ -101,7 +107,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
     "REAPER_GALLERY_GATEWAY_ROLLBACK_ENABLED",
   );
   const pendingVerificationSyncEnabled = optionalBoolean(env, "REAPER_PENDING_VERIFICATION_SYNC_ENABLED", false);
-  const pendingVerificationSyncUrl = String(env.REAPER_PENDING_VERIFICATION_SYNC_URL || "").trim().replace(/\/+$/, "");
+  const pendingVerificationSyncUrl = String(env.REAPER_PENDING_VERIFICATION_SYNC_URL || "").trim();
   const pendingVerificationSyncSecret = String(env.REAPER_PENDING_VERIFICATION_SYNC_SECRET || "").trim();
   const pendingVerificationSyncTimeoutMs = optionalInteger(
     env,
@@ -121,7 +127,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ReaperConfig {
       "REAPER_PENDING_VERIFICATION_SYNC_URL and REAPER_PENDING_VERIFICATION_SYNC_SECRET are required when pending verification sync is enabled.",
     );
   }
-  if (pendingVerificationSyncEnabled) validatePendingVerificationSyncUrl(pendingVerificationSyncUrl);
+  if (pendingVerificationSyncEnabled) pendingVerificationSyncEndpoint(pendingVerificationSyncUrl);
 
   return {
     discordBotToken: requireEnv(env, "DISCORD_BOT_TOKEN"),

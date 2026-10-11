@@ -90,11 +90,11 @@ The worker uses only `Guilds` and `GuildMembers` intents. It does not mutate
 Discord roles or channel permission overwrites directly and does not store
 Supabase service-role keys. The Edge Function owns the current-member fetch,
 conflict checks, max-mutation guard, tracked `VIEW_CHANNEL` overwrite writes,
-and fixed-schema aggregate-only `discord_sync_log` entries that never retain
-Discord user IDs, channel IDs, or channel names. Retries reuse one
-byte-identical desired-state payload; the Edge Function re-fetches current
-member state before calculating changes, so a repeated delivery converges
-without duplicating an already-applied overwrite.
+and fixed-schema aggregate-only `discord_sync_log` entries. Before any request,
+the worker stores a UUID and byte-identical payload in a private host spool.
+The compatible Website release permanently binds that UUID to its payload and
+holds a durable fence shared by all containment writers. Forwarding activation
+requires that release; the older endpoint is incompatible.
 
 ## Current Contract
 
@@ -222,17 +222,24 @@ still contains no deployment workflow and no runtime has been activated.
 - Register guild commands before endpoint verification checks.
 - Keep Discord, Supabase, and Instagram secrets in Supabase secrets or local
   ignored files only.
-- Pending-verification forwarding uses bounded Edge Function attempts and
-  per-attempt timeouts. Logs stay redacted and record only status labels, short
-  snowflake suffixes, counts, and attempt numbers.
-- When forwarding is enabled, its target must be an absolute HTTPS URL without
-  embedded credentials.
-- Retryable `408`, `429`, and `5xx` responses use bounded backoff. A valid
-  `Retry-After` is honored only within the five-second retry-delay budget; a
-  larger delay fails closed for a later Gateway event or operator retry.
-- A timed-out request is not retried because remote completion is unknown. A
-  later Gateway event or operator reconciliation can safely converge current
-  member state without overlapping the original request.
+- Pending-verification forwarding uses a private persistent host spool and one
+  sequential drainer. It retains at most 256 records of at most 32 KiB each.
+  Admission, corruption, or storage failure raises a readiness fault; no event
+  is reported as delivered. Logs contain only fixed labels and counts.
+- The configured target must be the canonical credential-free HTTPS
+  `/functions/v1/reaper-discord-member-sync` endpoint, without a query or
+  fragment. Requests reject redirects.
+- Each delivery pass starts with an authenticated UUID status lookup. Only a
+  durable `missing` receipt admits a POST using the original UUID and exact
+  spooled body. Network errors, timeouts, malformed acknowledgements, `408`,
+  `429`, and `5xx` responses never trigger a blind POST replay.
+- Only an exact completed receipt removes work. Pending work retains its UUID
+  and bounded backoff across restarts. Blocked/rejected work remains quarantined
+  and holds later queued events for operator reconciliation; there is no timed
+  takeover or restart reset. Welcome DMs remain independently enabled.
+
+The concrete local hosting candidate and remaining publication/activation gates
+are in [`docs/operations/GATEWAY-DEPLOYMENT.md`](docs/operations/GATEWAY-DEPLOYMENT.md).
 
 ## Release Boundary
 

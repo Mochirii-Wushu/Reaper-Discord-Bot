@@ -1,0 +1,25 @@
+[Unit]
+Description=Mochirii Reaper Gateway lifecycle
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target mochirii-reaper-gateway-health.timer
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/mochirii-reaper/gateway-release.env
+WorkingDirectory=/opt/mochirii-reaper
+ExecStartPre=/bin/sh /opt/mochirii-reaper/deploy/gateway-health.sh --validate-image
+# Check metadata only. Runtime credential values are read only by Docker Compose.
+ExecStartPre=/bin/sh -ec 'test "$$(stat -c %%u:%%a /etc/mochirii-reaper/gateway.env)" = "0:600"; test "$$(stat -c %%u:%%a /etc/mochirii-reaper/gateway-release.env)" = "0:600"; test -d /var/lib/mochirii-reaper/gateway; test ! -L /var/lib/mochirii-reaper/gateway; test "$$(stat -c %%u:%%g:%%a /var/lib/mochirii-reaper/gateway)" = "65532:65532:700"'
+ExecStart=/usr/bin/docker compose --env-file /etc/mochirii-reaper/gateway-release.env --project-name mochirii-reaper-gateway --file /opt/mochirii-reaper/deploy/gateway.compose.yml up --detach --no-build --pull never --wait --wait-timeout 120 gateway
+ExecStop=/usr/bin/docker compose --env-file /etc/mochirii-reaper/gateway-release.env --project-name mochirii-reaper-gateway --file /opt/mochirii-reaper/deploy/gateway.compose.yml stop --timeout 20 gateway
+Restart=no
+TimeoutStartSec=150
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
+# A maintenance stop that must survive reboot uses disable --now or mask.
