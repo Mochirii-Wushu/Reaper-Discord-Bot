@@ -55,6 +55,23 @@ approved tier. Do not silently add swap, increase cost, or weaken limits. Apply 
 verify an appropriate host filesystem quota/alert for the private spool; Compose
 alone does not supply a host disk quota.
 
+The prepared policy uses the existing directories, application bounds and
+independent filesystem-capacity health checks, plus an approved external root
+disk alert. It does not require a new volume, loopback filesystem, root mount
+change or native quota. The observer requires more than 1 GiB available bytes
+and 1,024 available inodes on each spool filesystem and fails closed to unhealthy
+on unknown capacity or unsafe directory metadata. These operational reserves
+are not a disk quota and cannot guarantee admission under unrelated host growth.
+[DigitalOcean resource alerts](https://docs.digitalocean.com/products/monitoring/how-to/manage-resource-alerts/)
+document a root disk metric and recommend 70% as an initial warning threshold;
+the exact policy, duration, destination and delivery test need provider approval.
+The documented alert list has no inode metric, so the independent observer
+supplies inode health through the existing external status monitor. Verify both
+notification paths before activation. Preserve possible crash-orphan temporary
+files for reconciliation; do not claim a finite total lifetime spool bound or
+delete retained evidence. See [runtime operations](../runtime-operations.md) for
+the byte/inode derivation and unchanged backup behavior while unhealthy.
+
 ## Host files and supervision
 
 Install reviewed deployment files root-owned under `/opt/mochirii-reaper/deploy`.

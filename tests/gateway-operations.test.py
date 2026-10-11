@@ -92,6 +92,7 @@ class Fixture:
         # unprivileged Linux CI. Pure metadata tests below exercise root rules.
         self.stack.enter_context(mock.patch.object(ops, "check_ancestry"))
         self.stack.enter_context(mock.patch.object(ops, "check_directory"))
+        self.stack.enter_context(mock.patch.object(ops, "storage_capacity", return_value=True))
         original = ops.check_metadata
         def fixture_metadata(info, owner, mode, maximum):
             adjusted = SimpleNamespace(st_mode=info.st_mode, st_uid=owner, st_nlink=info.st_nlink, st_size=info.st_size)
@@ -124,6 +125,134 @@ class Fixture:
     def __exit__(self, *args):
         self.stack.close()
         self.temporary.cleanup()
+
+
+class StorageCapacityTests(unittest.TestCase):
+    @contextlib.contextmanager
+    def fixture(self):
+        gateway, operations = Path("/synthetic/gateway"), Path("/synthetic/operations")
+        gateway_info = SimpleNamespace(st_mode=stat.S_IFDIR | 0o700, st_uid=65532, st_gid=65532,
+                                       st_dev=1, st_ino=11)
+        operations_info = SimpleNamespace(st_mode=stat.S_IFDIR | 0o700, st_uid=0, st_gid=0,
+                                          st_dev=1, st_ino=12)
+        volume = dict(f_frsize=4096, f_blocks=10_000_000, f_bfree=1_000_000,
+                      f_bavail=1_000_000, f_files=10_000, f_ffree=5000, f_favail=2048, f_flag=0)
+        with contextlib.ExitStack() as stack:
+            ancestry = stack.enter_context(mock.patch.object(ops, "check_ancestry"))
+            metadata = stack.enter_context(mock.patch.object(Path, "lstat", side_effect=[
+                gateway_info, gateway_info, operations_info, operations_info]))
+            opened = stack.enter_context(mock.patch.object(ops.os, "open", side_effect=[71, 72]))
+            descriptor = stack.enter_context(mock.patch.object(ops.os, "fstat", side_effect=[
+                gateway_info, gateway_info, operations_info, operations_info]))
+            capacity = stack.enter_context(mock.patch.object(ops.os, "fstatvfs", create=True,
+                side_effect=[SimpleNamespace(**volume), SimpleNamespace(**volume)]))
+            closed = stack.enter_context(mock.patch.object(ops.os, "close"))
+            for target in ((ops, "private_read"), (ops.os, "listdir"), (ops.os, "scandir")):
+                stack.enter_context(mock.patch.object(*target, side_effect=AssertionError("private contents forbidden")))
+            yield SimpleNamespace(gateway=gateway, operations=operations, gateway_info=gateway_info,
+                                  operations_info=operations_info, volume=volume, ancestry=ancestry,
+                                  metadata=metadata, opened=opened, descriptor=descriptor,
+                                  capacity=capacity, closed=closed)
+
+    def test_both_private_directories_are_checked_without_contents(self):
+        with self.fixture() as fixture:
+            self.assertTrue(ops.storage_capacity(fixture.gateway, fixture.operations))
+            flags = ops.os.O_RDONLY | getattr(ops.os, "O_DIRECTORY", 0) | getattr(ops.os, "O_NOFOLLOW", 0) | getattr(ops.os, "O_NONBLOCK", 0)
+            self.assertEqual(fixture.opened.call_args_list, [mock.call(fixture.gateway, flags), mock.call(fixture.operations, flags)])
+            self.assertEqual(fixture.capacity.call_args_list, [mock.call(71), mock.call(72)])
+            self.assertEqual(fixture.closed.call_args_list, [mock.call(71), mock.call(72)])
+            self.assertEqual(fixture.ancestry.call_count, 4)
+
+    def test_byte_floor_is_end_exclusive_on_each_filesystem(self):
+        for position in (0, 1):
+            for available, expected in ((ops.MIN_AVAILABLE_BYTES - 1, False),
+                                        (ops.MIN_AVAILABLE_BYTES, False), (ops.MIN_AVAILABLE_BYTES + 1, True)):
+                with self.subTest(position=position, available=available), self.fixture() as fixture:
+                    volumes = [dict(fixture.volume, f_frsize=1, f_blocks=10 * ops.MIN_AVAILABLE_BYTES,
+                                    f_bfree=10 * ops.MIN_AVAILABLE_BYTES, f_bavail=ops.MIN_AVAILABLE_BYTES + 1) for _ in range(2)]
+                    volumes[position]["f_bavail"] = available
+                    fixture.capacity.side_effect = [SimpleNamespace(**value) for value in volumes]
+                    self.assertEqual(ops.storage_capacity(fixture.gateway, fixture.operations), expected)
+
+    def test_inode_floor_is_end_exclusive_on_each_filesystem(self):
+        for position in (0, 1):
+            for available, expected in ((ops.MIN_AVAILABLE_INODES - 1, False),
+                                        (ops.MIN_AVAILABLE_INODES, False), (ops.MIN_AVAILABLE_INODES + 1, True)):
+                with self.subTest(position=position, available=available), self.fixture() as fixture:
+                    volumes = [dict(fixture.volume) for _ in range(2)]
+                    volumes[position]["f_favail"] = available
+                    fixture.capacity.side_effect = [SimpleNamespace(**value) for value in volumes]
+                    self.assertEqual(ops.storage_capacity(fixture.gateway, fixture.operations), expected)
+
+    def test_unknown_negative_nonsensical_and_readonly_statistics_fail_closed(self):
+        for changed in ({"f_frsize": 0}, {"f_frsize": -1}, {"f_frsize": True}, {"f_bavail": -1},
+                        {"f_bavail": 1_000_001}, {"f_bfree": 10_000_001}, {"f_favail": -1},
+                        {"f_favail": 5001}, {"f_ffree": 10_001}, {"f_files": 0}, {"f_flag": -1},
+                        {"f_favail": None}, {"f_flag": getattr(ops.os, "ST_RDONLY", 1)}):
+            with self.subTest(changed=changed), self.fixture() as fixture:
+                fixture.capacity.side_effect = [SimpleNamespace(**dict(fixture.volume, **changed))]
+                self.assertFalse(ops.storage_capacity(fixture.gateway, fixture.operations))
+                fixture.closed.assert_called_once_with(71)
+        with self.fixture() as fixture:
+            fixture.capacity.side_effect = [SimpleNamespace()]
+            self.assertFalse(ops.storage_capacity(fixture.gateway, fixture.operations))
+
+    def test_missing_or_failed_metadata_is_unhealthy_and_closes_open_handles(self):
+        for boundary in ("metadata", "opened", "descriptor", "capacity", "ancestry"):
+            with self.subTest(boundary=boundary), self.fixture() as fixture:
+                getattr(fixture, boundary).side_effect = OSError("synthetic private failure must not be printed")
+                with mock.patch("sys.stdout", new_callable=io.StringIO) as output, mock.patch("sys.stderr", new_callable=io.StringIO) as errors:
+                    self.assertFalse(ops.storage_capacity(fixture.gateway, fixture.operations))
+                    self.assertEqual((output.getvalue(), errors.getvalue()), ("", ""))
+                self.assertEqual(fixture.closed.call_count, int(boundary in ("descriptor", "capacity")))
+
+    def test_wrong_owner_mode_symlink_and_changed_identity_fail_closed(self):
+        for position in range(4):
+            for changed in ({"st_uid": 1}, {"st_mode": stat.S_IFDIR | 0o755},
+                            {"st_mode": stat.S_IFLNK | 0o700}, {"st_ino": 99}):
+                with self.subTest(position=position, changed=changed), self.fixture() as fixture:
+                    values = [fixture.gateway_info, fixture.gateway_info, fixture.operations_info, fixture.operations_info]
+                    values[position] = SimpleNamespace(**dict(vars(values[position]), **changed))
+                    fixture.metadata.side_effect = values
+                    self.assertFalse(ops.storage_capacity(fixture.gateway, fixture.operations))
+        for position in range(4):
+            with self.subTest(descriptor=position), self.fixture() as fixture:
+                values = [fixture.gateway_info, fixture.gateway_info, fixture.operations_info, fixture.operations_info]
+                values[position] = SimpleNamespace(**dict(vars(values[position]), st_ino=99))
+                fixture.descriptor.side_effect = values
+                self.assertFalse(ops.storage_capacity(fixture.gateway, fixture.operations))
+
+    def test_capacity_failure_keeps_backup_and_existing_heartbeat_schema(self):
+        with Fixture() as fixture, mock.patch.object(ops, "storage_capacity", return_value=False) as capacity:
+            remote = FakeRemote()
+            result, encryptions = fixture.run(remote)
+            self.assertFalse(result)
+            self.assertEqual(encryptions, 1)
+            self.assertIsNotNone(fixture.store.accepted())
+            self.assertIsNone(fixture.store.pending())
+            capacity.assert_called_once_with(fixture.snapshot.parent, fixture.store.directory)
+            heartbeat = ops.parse_json(remote.calls[-1][2])
+            self.assertEqual(set(heartbeat), {"version", "request_id", "observed_at", "healthy",
+                "checkpoint_id", "checkpoint_captured_at", "checkpoint_checked_at"})
+            self.assertFalse(heartbeat["healthy"])
+            self.assertEqual(heartbeat["checkpoint_id"], IDENTITY)
+
+    def test_capacity_failure_preserves_lost_ack_ciphertext(self):
+        with Fixture() as fixture, mock.patch.object(ops, "storage_capacity", return_value=False):
+            remote = FakeRemote()
+            remote.lose_ack = True
+            result, encryptions = fixture.run(remote)
+            self.assertFalse(result)
+            self.assertEqual(encryptions, 1)
+            self.assertEqual(fixture.store.pending()[1], CIPHER)
+            self.assertIsNone(fixture.store.accepted())
+
+    def test_capacity_is_evaluated_even_when_gateway_readiness_is_false(self):
+        with Fixture() as fixture, mock.patch.object(ops, "readiness", return_value=False), \
+                mock.patch.object(ops, "storage_capacity", return_value=True) as capacity:
+            self.assertFalse(ops.run_once(config(False), fixture.store, FakeRemote(), fixture.snapshot,
+                                        fixture.status, fixture.age, fixture.latch, NOW))
+            capacity.assert_called_once()
 
 
 class ValidationTests(unittest.TestCase):
