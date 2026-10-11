@@ -17,9 +17,10 @@
   "bundleMaximumAgeMinutes": 60,
   "tagFormat": "sha-<commit>-run-<run-id>-attempt-<attempt>",
   "skopeoImage": "quay.io/skopeo/stable@sha256:3378b51926bf4be02982956bbbdfddc004a81047eb3ee55b359d8bfb520ac9eb",
-  "workflowSha256": "be5d5442c5dd128a5d55dc5e8db98cde3000b38e8ec48d29ab78cde8cd190c7c",
+  "workflowSha256": "3aced2f580d68df3e3e9528d3e91961a9f4678942d98ff0585180c2b587590c9",
   "stepSha256": {
     "build": [
+      "bc7cf75fe6d8cb3684dec051722dc0ed37afa4ec4dd2e3402ba0c61114fc7b87",
       "ec536a2108a92c72128860e7844cbd4067bd0c7b00e7e59612023e66b226f87c",
       "153e9ee00ac9d5137af960d904dc617eb2437184bd24c897e123ef99b5912989",
       "8939ea79885f9e8a6d3301fe59e38eb984a425bf09f8dcee7e1e09b519a4a58f",
@@ -38,6 +39,7 @@
       "f8180780e22ef27b451e2efb335c50418b3ead13906d56d8f3f5a57d59e1501a"
     ],
     "publish": [
+      "bc7cf75fe6d8cb3684dec051722dc0ed37afa4ec4dd2e3402ba0c61114fc7b87",
       "ec536a2108a92c72128860e7844cbd4067bd0c7b00e7e59612023e66b226f87c",
       "8939ea79885f9e8a6d3301fe59e38eb984a425bf09f8dcee7e1e09b519a4a58f",
       "262494459d53b6df312633210d191868a98d2cee30a7d6e2cc91bdf6fbe18696",

@@ -37,12 +37,15 @@ jobs:
     permissions:
       contents: read
       actions: read
-    env:
-      BUNDLE: ${{ runner.temp }}/gateway-bundle
     outputs:
       artifact_id: ${{ steps.upload.outputs.artifact-id }}
       digest: ${{ steps.image.outputs.digest }}
     steps:
+      - name: Initialize runner-local bundle path
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          printf 'BUNDLE=%s/gateway-bundle\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.EXPECTED_SHA }}
@@ -159,9 +162,12 @@ jobs:
       packages: write
       attestations: write
       id-token: write
-    env:
-      BUNDLE: ${{ runner.temp }}/gateway-bundle
     steps:
+      - name: Initialize runner-local bundle path
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          printf 'BUNDLE=%s/gateway-bundle\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.EXPECTED_SHA }}

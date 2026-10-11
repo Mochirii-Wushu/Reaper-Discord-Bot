@@ -8,7 +8,7 @@ import {
   PUBLICATION_REPOSITORY,
 } from "./gateway-image-publication.js";
 
-const expectedContractSha256 = "636885d51536d8d59741abcfb904fb18739084b72a1933f6c7409786eb562853";
+const expectedContractSha256 = "d4dd5202c2731a252ceef7d7fa343851268fa7724e61f746488d59a4672c32e2";
 const hash = (value: string): string =>
   createHash("sha256").update(value, "utf8").digest("hex");
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -71,8 +71,11 @@ export function validateGatewayImageWorkflow(source: string, contract: unknown):
   for (const jobName of ["build", "publish"] as const) {
     const job = workflow.jobs[jobName];
     const allowed = jobName === "build"
-      ? ["if", "runs-on", "timeout-minutes", "permissions", "env", "outputs", "steps"]
-      : ["needs", "if", "environment", "runs-on", "timeout-minutes", "permissions", "env", "steps"];
+      ? ["if", "runs-on", "timeout-minutes", "permissions", "outputs", "steps"]
+      : ["needs", "if", "environment", "runs-on", "timeout-minutes", "permissions", "steps"];
+    if (isRecord(job) && isRecord(job.env) && Object.values(job.env).some((value) =>
+      typeof value === "string" && /\$\{\{\s*runner[.\[]/u.test(value)
+    )) errors.push("Runner context is unavailable in job env; initialize runner-local paths in a step.");
     if (!isRecord(job) || !keys(job, allowed)) {
       errors.push("Unexpected publication job fields.");
       continue;
@@ -82,7 +85,6 @@ export function validateGatewayImageWorkflow(source: string, contract: unknown):
       job["runs-on"] !== "ubuntu-24.04" ||
       job["timeout-minutes"] !== (jobName === "build" ? 45 : 30) ||
       !equal(job.permissions, expectedPermissions[jobName]) ||
-      !equal(job.env, { BUNDLE: "${{ runner.temp }}/gateway-bundle" }) ||
       (jobName === "publish" && (job.needs !== "build" || job.environment !== PUBLICATION_ENVIRONMENT)) ||
       (jobName === "build" && !equal(job.outputs, {
         artifact_id: "${{ steps.upload.outputs.artifact-id }}",

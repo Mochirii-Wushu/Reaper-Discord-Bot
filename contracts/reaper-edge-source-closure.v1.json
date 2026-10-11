@@ -9,7 +9,7 @@
   "framing": "rows ASCII-sorted by path; each row is status + NUL + path + NUL + mode + NUL + Git blob + NUL + lowercase SHA256(blob bytes) + LF",
   "fileCount": 137,
   "byteCount": 21392,
-  "sha256": "3534f60843a92b48baafdca90343e0af8114b5c9b49570541af64b7e37dbd672",
+  "sha256": "3c24e3fc47ed4e79a1c20b6d8bd9e8b3a80f63c0faf4bac52a46eaa34adf5fcc",
   "entries": [
     {
       "status": "A",
@@ -47,9 +47,9 @@
       "status": "A",
       "path": ".github/workflows/gateway-image.yml",
       "mode": "100644",
-      "blob": "98266454c516baa808166143c683c57fa0003c73",
-      "sha256": "be5d5442c5dd128a5d55dc5e8db98cde3000b38e8ec48d29ab78cde8cd190c7c",
-      "byteCount": 15402
+      "blob": "54deed72032118a7b351cdd1cc0cd218773cd639",
+      "sha256": "3aced2f580d68df3e3e9528d3e91961a9f4678942d98ff0585180c2b587590c9",
+      "byteCount": 15672
     },
     {
       "status": "M",
@@ -151,9 +151,9 @@
       "status": "A",
       "path": "contracts/gateway-image-publication.v1.json",
       "mode": "100644",
-      "blob": "59ac7732403f3212cb85ecc172eb53d45c3f8042",
-      "sha256": "497a2c157d3f6cc63479682d3205b9820e6963a04762f95a47b259880a44520c",
-      "byteCount": 3031
+      "blob": "a99a04c199e499025862940cb533c7f9262fe8f7",
+      "sha256": "8bd6c2529c8f4f85505a639b1c2656439cc3a5b758dea5be509e54b9fc255e14",
+      "byteCount": 3179
     },
     {
       "status": "M",
@@ -375,9 +375,9 @@
       "status": "A",
       "path": "scripts/check-gateway-image.ts",
       "mode": "100644",
-      "blob": "4bb4425a96fad6bfd364fee7e5a95b7d000a43e5",
-      "sha256": "bbbe8ca89136b88b4c485573789429b9336a38f3162e30ff0e46cc0fc8a64707",
-      "byteCount": 7500
+      "blob": "022cc1fa84e273ed817a600152350bb3e4fbc694",
+      "sha256": "1b58f9a6744e90941312ad768bb8ee7eaecabfbe9a3ea06cd2b343f4f0c07d7a",
+      "byteCount": 7674
     },
     {
       "status": "M",
@@ -1055,9 +1055,9 @@
       "status": "A",
       "path": "tests/gateway-image.test.ts",
       "mode": "100644",
-      "blob": "419fe215a5b329d911a02495602fe47ed14837b6",
-      "sha256": "7f0eaea084f0366ea2ab04e8b3e1b22ef48ddbb00d57cb964b0109800995d5a0",
-      "byteCount": 29230
+      "blob": "74bc0618eeaa0ae6f7490484d5e972b2fae7aa9b",
+      "sha256": "50298c5a796f314af91b09d8d7318195dbc1e4d321b9b8569fcffdbf89b14ff4",
+      "byteCount": 30330
     },
     {
       "status": "M",

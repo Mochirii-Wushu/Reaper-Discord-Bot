@@ -380,6 +380,29 @@ describe("exact dormant image workflow", () => {
     expect(validateGatewayImageWorkflow(JSON.stringify(workflow()), publicationContract)).not.toEqual([]);
   });
 
+  test("initializes runner-local paths before use and rejects runner context in job env", () => {
+    for (const name of ["build", "publish"] as const) {
+      const job = workflow().jobs[name];
+      expect(job.env).toBeUndefined();
+      expect(job.steps[0]).toEqual({
+        name: "Initialize runner-local bundle path",
+        shell: "bash",
+        run: 'set -Eeuo pipefail\nprintf \'BUNDLE=%s/gateway-bundle\\n\' "$RUNNER_TEMP" >> "$GITHUB_ENV"\n',
+      });
+      for (const value of ["${{ runner.temp }}/gateway-bundle", "${{ runner['temp'] }}/gateway-bundle"]) {
+        const w = workflow();
+        w.jobs[name].env = { BUNDLE: value };
+        expect(validateGatewayImageWorkflow(JSON.stringify(w), publicationContract)).toContain(
+          "Runner context is unavailable in job env; initialize runner-local paths in a step.",
+        );
+      }
+      rejectWorkflow((w) => { w.jobs[name].steps.shift(); });
+      rejectWorkflow((w) => {
+        [w.jobs[name].steps[0], w.jobs[name].steps[1]] = [w.jobs[name].steps[1]!, w.jobs[name].steps[0]!];
+      });
+    }
+  });
+
   test("rejects automatic or additional events, optional source inputs and global write scopes", () => {
     for (const event of ["push", "pull_request", "pull_request_target", "workflow_run", "schedule"]) {
       rejectWorkflow((w) => { w.on[event] = {}; });
@@ -441,7 +464,7 @@ describe("exact dormant image workflow", () => {
     ] as const) rejectWorkflow((w) => { action(w.jobs.build, "docker/build-push-action").with![key] = value; });
     rejectWorkflow((w) => { action(w.jobs.publish, "docker/login-action").with!.registry = "registry.test"; });
     rejectWorkflow((w) => { action(w.jobs.publish, "docker/login-action").with!.password = "${{ secrets.SYNTHETIC_PAT }}"; });
-    rejectWorkflow((w) => { w.jobs.build.steps[0]!.uses = "actions/checkout@main"; });
+    rejectWorkflow((w) => { action(w.jobs.build, "actions/checkout").uses = "actions/checkout@main"; });
     rejectWorkflow((w) => { w.jobs.publish.steps.push({ uses: "synthetic/action@" + commit }); });
     rejectWorkflow((w) => { w.jobs.publish.steps[0]!.env = { SYNTHETIC_SECRET: "${{ secrets.SYNTHETIC_TOKEN }}" }; });
   });
