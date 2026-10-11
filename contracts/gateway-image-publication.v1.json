@@ -17,12 +17,12 @@
   "bundleMaximumAgeMinutes": 60,
   "tagFormat": "sha-<commit>-run-<run-id>-attempt-<attempt>",
   "skopeoImage": "quay.io/skopeo/stable@sha256:3378b51926bf4be02982956bbbdfddc004a81047eb3ee55b359d8bfb520ac9eb",
-  "workflowSha256": "14cce2e85c1ba9a2add58cd60365282bbb4ac0fa1e58cbe86f2d18152cbc0322",
+  "workflowSha256": "5925f54a4698691f145afb78eb14a1552c45d398d07bbbadf11ee86dc93921ba",
   "stepSha256": {
     "build": [
       "bc7cf75fe6d8cb3684dec051722dc0ed37afa4ec4dd2e3402ba0c61114fc7b87",
       "ec536a2108a92c72128860e7844cbd4067bd0c7b00e7e59612023e66b226f87c",
-      "153e9ee00ac9d5137af960d904dc617eb2437184bd24c897e123ef99b5912989",
+      "022558f0731e31863b9bf803465575d5f5d69fd2ace08e09fb510bd12b36cc26",
       "8939ea79885f9e8a6d3301fe59e38eb984a425bf09f8dcee7e1e09b519a4a58f",
       "554016e74c21b27ff52087aba7a9f5bb5f88401cb3750c3dfef4d45f83c9478d",
       "05186e0585bc3af341daddb93ede3c1eadf274ca7e8a2bb0766fdb0623aac4f3",

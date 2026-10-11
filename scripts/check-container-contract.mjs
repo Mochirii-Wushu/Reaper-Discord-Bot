@@ -45,7 +45,7 @@ if (/docker\s+(?:login|push)|build-push-action|packages:\s*write/i.test(workflow
 }
 requireText(workflow, /EXPECTED_SHA:\s*\$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/, "CI must bind validation to the exact pull-request head.");
 requireText(workflow, /test "\$\(git rev-parse HEAD\)" = "\$EXPECTED_SHA"/, "CI must reject checkout source drift.");
-requireText(workflow, /actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020[\s\S]*?node-version:\s*"22\.23\.2"/, "CI must pin the reviewed Node runtime and immutable setup action.");
+requireText(workflow, /actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020[\s\S]*?node-version:\s*"22\.23\.3"/, "CI must pin the reviewed Node runtime and immutable setup action.");
 requireText(workflow, /^\s*- run: bun install --frozen-lockfile --ignore-scripts$/m, "CI must install the frozen graph without lifecycle scripts.");
 requireText(workflow, /bun run check:container/, "CI must inspect the built runtime image.");
 
@@ -69,7 +69,7 @@ if (contract.build?.runtimeImage !== dockerfile.match(/^ARG NODE_IMAGE="([^"]+)"
 if (contract.build?.dockerfileFrontend !== dockerfile.match(/^# syntax=([^\s]+)$/m)?.[1]) errors.push("Dockerfile frontend provenance drifted from Dockerfile.");
 if (contract.runtime?.workstationDependencyAllowed !== false) errors.push("Workstation independence must fail closed.");
 if (contract.runtime?.rootAllowed !== false || contract.runtime?.user !== "65532:65532") errors.push("Runtime privilege contract is invalid.");
-if (contract.build?.runtimeNodeVersion !== "22.23.2" || contract.build?.runtimeDistroless !== true) errors.push("Runtime version or distroless contract is invalid.");
+if (contract.build?.runtimeNodeVersion !== "22.23.3" || contract.build?.runtimeDistroless !== true) errors.push("Runtime version or distroless contract is invalid.");
 if (contract.build?.builderDistroless !== true || contract.build?.builderShellIncluded !== false) errors.push("Builder distroless or shell contract is invalid.");
 if (contract.build?.runtimeShellIncluded !== false || contract.build?.runtimePackageManagerIncluded !== false) errors.push("Runtime tool surface must fail closed.");
 if (contract.build?.runtimeImageSignatureRequired !== true) errors.push("Runtime image signature verification must be required.");
@@ -81,7 +81,7 @@ if (contract.dependencyAudit?.severityThreshold !== "high" || contract.dependenc
 if (contract.dependencyAudit?.rawJsonRequired !== true || JSON.stringify(contract.dependencyAudit?.exceptionMatchFields) !== JSON.stringify(["package", "advisoryUrl", "vulnerableVersions"])) {
   errors.push("Dependency audit exceptions must bind exact raw-report finding fields.");
 }
-if (packageJson.engines?.node !== "22.23.2" || packageJson.engines?.bun !== "1.3.14") errors.push("Runtime engines drifted from the reviewed toolchain.");
+if (packageJson.engines?.node !== "22.23.3" || packageJson.engines?.bun !== "1.3.14") errors.push("Runtime engines drifted from the reviewed toolchain.");
 if (packageJson.scripts?.start !== "node dist/index.js") errors.push("Package start command drifted from the developer runtime contract.");
 if (packageJson.scripts?.["audit:production"] !== "node scripts/audit-dependencies.mjs --scope=production") errors.push("Production dependency audit command drifted.");
 if (packageJson.scripts?.["audit:complete"] !== "node scripts/audit-dependencies.mjs --scope=complete") errors.push("Complete dependency audit command drifted.");

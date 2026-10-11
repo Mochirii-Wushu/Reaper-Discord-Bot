@@ -1,6 +1,6 @@
 # Dependency Security
 
-The repository pins Bun `1.3.14` and Node.js `22.23.2`. Reaper owns the source,
+The repository pins Bun `1.3.14` and Node.js `22.23.3`. Reaper owns the source,
 tests, Deno toolchain, function-local import maps, and frozen lockfiles for the
 six contracted Edge Functions. Website remains the database/schema owner and
 current production writer until an approved single-writer cutover.
