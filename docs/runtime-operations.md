@@ -37,6 +37,16 @@ process state, fresh ready snapshots, reconnect frequency, invalidated
 sessions, redacted error categories, and restart loops. Alert destinations,
 retention, egress, and cost require a separate provider packet.
 
+The prepared `mochirii-reaper-gateway-operations.timer` is independent of the
+Gateway lifecycle and starts from `timers.target`. Its root-only, outbound
+Python 3.12+ observer runs every 60 seconds. It verifies the exact local
+image/container/Compose identity and invokes the private readiness command;
+it never restarts a container, reads Docker environment or logs, pulls an
+image, or forwards a member record. A persistent recovery latch reports
+unhealthy. Missing heartbeats become unhealthy after 180 seconds at the
+Website-owned status endpoint, whose only public responses are `ok` and
+`unavailable`. External alert delivery must be tested before welcome activation.
+
 Discord.js owns protocol heartbeats and session resumption. Acceptance still
 requires a controlled disconnect/reconnect observation, a host restart, and a
 full reboot with no workstation online. Source tests alone do not prove those
@@ -53,11 +63,40 @@ operator reconciliation. Database migrations and shared fences remain
 Website-owned.
 
 Recovery inputs are reviewed source, an immutable artifact, provider
-configuration, protected runtime credentials, and the private spool. Encrypted,
-access-controlled backup/recovery for credentials and spool state must be
-approved and verified separately; no backup or restore currently follows from
-the templates. A local cloud-synced credential recovery copy must never become a
-runtime dependency or contain copied member payloads without its own approval.
+configuration, protected runtime credentials, and the private spool. The
+selected source policy exports a consistent checkpoint at startup, on a new
+held/blocked state, and at most five minutes between due checks. Capture shares
+the queue's serialization barrier; encryption and network operations run
+outside it. A validated unchanged queue retains the same checkpoint ID and
+bytes while refreshing a separately bound check timestamp. An incomplete
+snapshot/status replacement fails closed; it never changes queue holds.
+
+The host observer uses the signature-verified, hash-pinned age 1.3.2 binary
+and only a public X25519 recipient. It durably stores one ciphertext and UUID
+before upload. Lost acknowledgements use authenticated receipt lookup;
+pending, blocked or retired receipts never authorize a replacement write.
+The Website-owned receiver has a separate HMAC key and accepts only bounded,
+create-only ciphertext. The worker holds no Storage or service-role key.
+Private Storage retention is the union of the latest eight checkpoints and
+the newest checkpoint for each of seven UTC+8 calendar days, with at most
+15 objects/240 MiB including uncertain reservations. Unknown or uncertain
+provider state stops cleanup/admission for reconciliation. The recovery goal
+is 15 minutes; fresh validated state must bind to an accepted receipt.
+
+The private age identity stays in the approved cloud-synced credential recovery
+boundary, never on the worker. This is a locally implemented policy, not proof
+of a hosted backup. Storage, secrets, hosted cron, monitoring and activation
+need separate approval and readback. A credential recovery copy never becomes
+a runtime dependency or a location for unapproved copied member payloads.
+
+After owner-approved download/decryption in an isolated private directory,
+`node dist/restore-checkpoint.js <absolute-checkpoint>` validates only, without
+loading bot configuration or contacting any provider. Explicit
+`--apply <fresh-offline-directory>` refuses existing targets, preserves original
+record UUIDs/order/backoff/blocked state and holds admission during staging.
+Never adopt a failed staging directory. Prove a complete validation/restore,
+reconcile original permanent remote receipts, and obtain activation approval
+before using a recovered queue. No timeout or restore clears uncertainty.
 
 ## Promotion and rollback
 

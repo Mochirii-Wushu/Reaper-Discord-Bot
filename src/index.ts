@@ -2,6 +2,7 @@ import { Client, Events, GatewayIntentBits } from "discord.js";
 import { loadConfig } from "./config.js";
 import { memberRolesChanged } from "./pending-verification.js";
 import { MemberSyncForwarder } from "./member-forwarder.js";
+import { CheckpointExporter } from "./checkpoint.js";
 import { createRuntimeHealthReporter, type GatewayHealthStatus } from "./runtime-health.js";
 import { createGalleryGatewayInteractionHandler } from "./submit.js";
 import { sendWelcomeDm } from "./welcome.js";
@@ -11,9 +12,15 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 const health = createRuntimeHealthReporter();
 let shuttingDown = false;
 let forwardingFault = false;
+let checkpoints: CheckpointExporter | undefined;
 const forwarder = new MemberSyncForwarder(config, {
   path: process.env.REAPER_MEMBER_SYNC_STATE_PATH,
   onFault: () => { forwardingFault = true; publishHealth("error"); },
+  onCheckpointNeeded: () => { void checkpoints?.request(); },
+});
+checkpoints = new CheckpointExporter({ path: process.env.REAPER_CHECKPOINT_PATH,
+  capture: () => forwarder.captureCheckpoint(),
+  onError: () => { console.warn("gateway checkpoint export failed; previous recovery evidence retained"); },
 });
 
 function errorName(error: unknown): string {
@@ -34,6 +41,10 @@ async function shutdown(exitCode: number): Promise<void> {
   forwarder.stop();
   clearInterval(heartbeat);
   try {
+    if (checkpoints && !await checkpoints.close()) {
+      console.warn("gateway checkpoint shutdown grace expired; preserve recovery evidence");
+      exitCode = 1;
+    }
     await health.publish("shutting_down");
   } catch (error) {
     console.error("gateway readiness shutdown write failed", {
@@ -48,7 +59,9 @@ async function shutdown(exitCode: number): Promise<void> {
 
 await health.publish("starting");
 await forwarder.initialize();
+await checkpoints.request();
 const heartbeat = setInterval(() => {
+  void checkpoints?.due();
   void health.heartbeat().catch((error) => {
     console.error("gateway readiness heartbeat write failed", {
       error: errorName(error),

@@ -8,14 +8,19 @@ import {
   type PendingVerificationLogger, type PendingVerificationMemberLike,
 } from "./pending-verification.js";
 
-const MAX_RECORDS = 256;
-const MAX_RECORD_BYTES = 32_768;
-const ADMISSION_FILE = "admission.json";
+export const MAX_RECORDS = 256;
+export const MAX_RECORD_BYTES = 32_768;
+export const ADMISSION_FILE = "admission.json";
 const ADMISSION_BYTES = 256;
 const FILE = /^(\d{16})-([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.json$/u;
-type Record = MemberSyncRequest & {
+export type MemberForwardingRecord = MemberSyncRequest & {
   schemaVersion: 1; sequence: number; status: "pending" | "blocked";
   retryAt: string; failures: number; reason: string | null;
+};
+type Record = MemberForwardingRecord;
+export type ForwardingCheckpointState = {
+  forwardingEnabled: boolean; admissionHeld: boolean;
+  entries: { filename: string; record: MemberForwardingRecord }[];
 };
 type Delivery = (request: MemberSyncRequest) => Promise<MemberSyncDelivery>;
 
@@ -26,7 +31,8 @@ async function syncDirectory(path: string): Promise<void> {
   try { await directory.sync(); } finally { await directory.close(); }
 }
 
-function parseRecord(source: string, filename: string): Record {
+export function parseMemberForwardingRecord(source: string, filename: string): Record {
+  if (Buffer.byteLength(source, "utf8") > MAX_RECORD_BYTES) throw new Error("Member forwarding record is too large.");
   const match = FILE.exec(filename);
   const value = JSON.parse(source) as Record;
   if (!match || !value || typeof value !== "object" || Array.isArray(value) ||
@@ -43,6 +49,51 @@ function parseRecord(source: string, filename: string): Record {
   return value;
 }
 
+export function admissionJournalSource(held: boolean): string {
+  return JSON.stringify({ schemaVersion: 1, held }).padEnd(ADMISSION_BYTES - 1, " ") + "\n";
+}
+
+export function parseAdmissionJournal(source: string): boolean {
+  const state = JSON.parse(source) as { schemaVersion: number; held: boolean };
+  if (!state || state.schemaVersion !== 1 || typeof state.held !== "boolean" || source !== admissionJournalSource(state.held)) {
+    throw new Error("Member forwarding admission journal is invalid.");
+  }
+  return state.held;
+}
+
+export async function readPrivateFile(path: string, maximum: number): Promise<string> {
+  const before = await lstat(path);
+  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || before.size < 1 || before.size > maximum ||
+    (process.platform !== "win32" && ((before.mode & 0o777) !== 0o600 || before.uid !== process.getuid?.()))) {
+    throw new Error("Private forwarding state is not private or bounded.");
+  }
+  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const metadata = await handle.stat();
+    if (before.isSymbolicLink() || !metadata.isFile() || metadata.nlink !== 1 || metadata.size < 1 || metadata.size > maximum ||
+      metadata.dev !== before.dev || metadata.ino !== before.ino ||
+      (process.platform !== "win32" && ((metadata.mode & 0o777) !== 0o600 || metadata.uid !== process.getuid?.()))) {
+      throw new Error("Private forwarding state is not private or bounded.");
+    }
+    // Bound reads even if an external writer grows a file after the metadata check.
+    const bytes = Buffer.alloc(metadata.size + 1);
+    let offset = 0;
+    while (offset < bytes.length) {
+      const { bytesRead } = await handle.read(bytes, offset, bytes.length - offset, offset);
+      if (!Number.isSafeInteger(bytesRead) || bytesRead < 0 || bytesRead > bytes.length - offset) throw new Error("Invalid private state read progress.");
+      if (!bytesRead) break;
+      offset += bytesRead;
+    }
+    const after = await handle.stat();
+    if (offset !== metadata.size || after.size !== metadata.size || after.mtimeMs !== metadata.mtimeMs || after.nlink !== 1) {
+      throw new Error("Private forwarding state changed while reading.");
+    }
+    // Preserve a leading BOM so canonical JSON validation rejects it rather than
+    // silently hashing different bytes from the file the host bridge receives.
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes.subarray(0, offset));
+  } finally { await handle.close(); }
+}
+
 export class MemberSyncForwarder {
   readonly enabled: boolean;
   readonly path: string;
@@ -50,6 +101,7 @@ export class MemberSyncForwarder {
   #logger: PendingVerificationLogger;
   #deliver: Delivery;
   #fault: () => void;
+  #checkpointNeeded: () => void;
   #clock: () => number;
   #tail: Promise<unknown> = Promise.resolve();
   #timer: ReturnType<typeof setTimeout> | null = null;
@@ -63,7 +115,7 @@ export class MemberSyncForwarder {
 
   constructor(config: ReaperConfig, options: {
     path?: string; logger?: PendingVerificationLogger; deliver?: Delivery;
-    onFault?: () => void; clock?: () => number;
+    onFault?: () => void; clock?: () => number; onCheckpointNeeded?: () => void;
   } = {}) {
     this.enabled = config.pendingVerificationSyncEnabled;
     this.path = options.path || "";
@@ -71,6 +123,7 @@ export class MemberSyncForwarder {
     this.#logger = options.logger || console;
     this.#deliver = options.deliver || ((request) => deliverMemberSyncRequest(request, config));
     this.#fault = options.onFault || (() => undefined);
+    this.#checkpointNeeded = options.onCheckpointNeeded || (() => undefined);
     this.#clock = options.clock || Date.now;
     if (this.enabled && (!this.path || !isAbsolute(this.path))) throw new Error("Private member forwarding state path is required.");
   }
@@ -91,61 +144,52 @@ export class MemberSyncForwarder {
     await syncDirectory(join(this.path, ".."));
     try {
       const journal = await open(join(this.path, ADMISSION_FILE), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
-      try { await journal.writeFile(this.#admissionSource(false)); await journal.sync(); } finally { await journal.close(); }
+      try { await journal.writeFile(admissionJournalSource(false)); await journal.sync(); } finally { await journal.close(); }
       await syncDirectory(this.path);
     } catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
-    await this.#admissionHold();
+    this.#held = await this.#readAdmissionHold();
     const records = await this.#records();
     this.#nextSequence = records.at(-1)?.record.sequence || 0;
     this.#ready = true;
     if (this.#held) this.#fail("admission_uncertain");
   }
 
-  #admissionSource(held: boolean): string {
-    return JSON.stringify({ schemaVersion: 1, held }).padEnd(ADMISSION_BYTES - 1, " ") + "\n";
+  async #readAdmissionHold(): Promise<boolean> {
+    return parseAdmissionJournal(await readPrivateFile(join(this.path, ADMISSION_FILE), ADMISSION_BYTES));
   }
 
-  async #admissionHold(held?: boolean): Promise<void> {
-    const journal = await open(join(this.path, ADMISSION_FILE), (held === undefined ? constants.O_RDONLY : constants.O_RDWR) | constants.O_NOFOLLOW);
+  async #admissionHold(held: boolean): Promise<void> {
+    const journal = await open(join(this.path, ADMISSION_FILE), constants.O_RDWR | constants.O_NOFOLLOW);
     try {
       const metadata = await journal.stat();
-      if (!metadata.isFile() || metadata.size !== ADMISSION_BYTES ||
+      if (!metadata.isFile() || metadata.size !== ADMISSION_BYTES || metadata.nlink !== 1 ||
         (process.platform !== "win32" && ((metadata.mode & 0o777) !== 0o600 || metadata.uid !== process.getuid?.()))) {
         throw new Error("Member forwarding admission journal is invalid.");
       }
-      if (held === undefined) {
-        const source = await journal.readFile("utf8");
-        const state = JSON.parse(source) as { schemaVersion: number; held: boolean };
-        if (state.schemaVersion !== 1 || typeof state.held !== "boolean" || source !== this.#admissionSource(state.held)) {
-          throw new Error("Member forwarding admission journal is invalid.");
-        }
-        this.#held = state.held;
-      } else {
-        const source = Buffer.from(this.#admissionSource(held), "utf8");
-        const writeAll = async (bytes: Buffer, position: number): Promise<void> => {
-          let offset = 0;
-          while (offset < bytes.length) {
-            const remaining = bytes.length - offset;
-            const { bytesWritten } = await journal.write(bytes, offset, remaining, position + offset);
-            if (!Number.isSafeInteger(bytesWritten) || bytesWritten < 1 || bytesWritten > remaining) {
-              throw new Error("Member forwarding admission journal write made invalid progress.");
-            }
-            offset += bytesWritten;
+      const source = Buffer.from(admissionJournalSource(held), "utf8");
+      const writeAll = async (bytes: Buffer, position: number): Promise<void> => {
+        let offset = 0;
+        while (offset < bytes.length) {
+          const remaining = bytes.length - offset;
+          const { bytesWritten } = await journal.write(bytes, offset, remaining, position + offset);
+          if (!Number.isSafeInteger(bytesWritten) || bytesWritten < 1 || bytesWritten > remaining) {
+            throw new Error("Member forwarding admission journal write made invalid progress.");
           }
-        };
-        if (held) {
-          // Keep the journal invalid until its complete true body is durable.
-          // A later short-write/error cannot restore the old valid false state.
-          await writeAll(Buffer.from("!"), 0);
-          await journal.sync();
-          await writeAll(source.subarray(1), 1);
-          await journal.sync();
-          await writeAll(source.subarray(0, 1), 0);
-        } else {
-          await writeAll(source, 0);
+          offset += bytesWritten;
         }
+      };
+      if (held) {
+        // Keep the journal invalid until its complete true body is durable.
+        // A later short-write/error cannot restore the old valid false state.
+        await writeAll(Buffer.from("!"), 0);
         await journal.sync();
+        await writeAll(source.subarray(1), 1);
+        await journal.sync();
+        await writeAll(source.subarray(0, 1), 0);
+      } else {
+        await writeAll(source, 0);
       }
+      await journal.sync();
     } finally { await journal.close(); }
   }
 
@@ -156,15 +200,7 @@ export class MemberSyncForwarder {
     for (const filename of files.sort()) {
       if (!FILE.test(filename)) throw new Error("Unknown member forwarding spool file.");
       const path = join(this.path, filename);
-      const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-      try {
-        const metadata = await handle.stat();
-        if (!metadata.isFile() || metadata.size < 2 || metadata.size > MAX_RECORD_BYTES ||
-          (process.platform !== "win32" && ((metadata.mode & 0o777) !== 0o600 || metadata.uid !== process.getuid?.()))) {
-          throw new Error("Member forwarding spool file is not private or bounded.");
-        }
-        result.push({ filename, record: parseRecord(await handle.readFile("utf8"), filename) });
-      } finally { await handle.close(); }
+      result.push({ filename, record: parseMemberForwardingRecord(await readPrivateFile(path, MAX_RECORD_BYTES), filename) });
     }
     if (new Set(result.map(({ record }) => record.sequence)).size !== result.length ||
       new Set(result.map(({ record }) => record.requestId)).size !== result.length) throw new Error("Duplicate member forwarding identity.");
@@ -188,6 +224,18 @@ export class MemberSyncForwarder {
     return result;
   }
 
+  captureCheckpoint(): Promise<ForwardingCheckpointState> {
+    if (!this.enabled) return Promise.resolve({ forwardingEnabled: false, admissionHeld: false, entries: [] });
+    return this.#serialize(async () => {
+      if (!this.#ready) throw new Error("Member forwarding spool has not initialized.");
+      const diskHeld = await this.#readAdmissionHold();
+      const entries = await this.#records();
+      // Synchronous admission faults may set memory held while these reads await.
+      // Reading the journal must never overwrite that conservative state.
+      return { forwardingEnabled: true, admissionHeld: this.#held || diskHeld, entries };
+    });
+  }
+
   enqueue(member: PendingVerificationMemberLike, event: PendingVerificationEventType, sequence: number | null = null): Promise<string> {
     if (!this.enabled) return Promise.resolve("disabled");
     if (member.guild.id !== this.#config.discordGuildId) return Promise.resolve("ignored_guild");
@@ -200,6 +248,7 @@ export class MemberSyncForwarder {
     }
     if (this.#pendingAdmissions >= MAX_RECORDS) {
       this.#held = true;
+      this.#checkpointNeeded();
       this.#holdPromise = this.#serialize(async () => {
         await this.#admissionHold(true);
       });
@@ -214,6 +263,7 @@ export class MemberSyncForwarder {
     catch {
       this.#pendingAdmissions--;
       this.#held = true;
+      this.#checkpointNeeded();
       this.#holdPromise = this.#serialize(() => this.#admissionHold(true));
       return this.#holdPromise.then(() => {
         this.#fail("invalid_event");
@@ -262,6 +312,7 @@ export class MemberSyncForwarder {
     this.stop();
     this.#logger.warn("member forwarding requires operator reconciliation", { reason });
     this.#fault();
+    this.#checkpointNeeded();
   }
 
   drainOnce(): Promise<void> {

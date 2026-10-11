@@ -1,0 +1,22 @@
+[Unit]
+Description=Mochirii Reaper Gateway outbound health and encrypted checkpoints
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -I -B /opt/mochirii-reaper/deploy/gateway-operations.py
+StateDirectory=mochirii-reaper-gateway-operations
+StateDirectoryMode=0700
+TimeoutStartSec=60
+LimitCORE=0
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/mochirii-reaper-gateway-operations

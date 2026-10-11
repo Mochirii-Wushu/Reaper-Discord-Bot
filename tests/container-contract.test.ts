@@ -33,7 +33,7 @@ describe("Gateway OCI artifact", () => {
       rawJsonRequired: true,
       exceptionMatchFields: ["package", "advisoryUrl", "vulnerableVersions"],
     });
-    expect(packageJson.scripts.check).toBe("bun run check:artifact && bun run audit:all && bun run typecheck && bun run test && bun run build && bun run release:check && bun run edge:contracts && bun run edge:fmt && bun run edge:check && bun run edge:test");
+    expect(packageJson.scripts.check).toBe("bun run check:artifact && bun run audit:all && bun run typecheck && bun run test && bun run test:operations && bun run build && bun run release:check && bun run edge:contracts && bun run edge:fmt && bun run edge:check && bun run edge:test");
     expect(readme).toMatch(/^\s*bun install --frozen-lockfile --ignore-scripts\s*$/m);
     expect(readme).not.toMatch(/^\s*bun install(?! --frozen-lockfile --ignore-scripts\s*$).*$/m);
     expect(dockerfile).not.toMatch(/^EXPOSE\b/m);

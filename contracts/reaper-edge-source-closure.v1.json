@@ -7,9 +7,9 @@
   "selfPath": "contracts/reaper-edge-source-closure.v1.json",
   "selfExcludedFromClosure": true,
   "framing": "rows ASCII-sorted by path; each row is status + NUL + path + NUL + mode + NUL + Git blob + NUL + lowercase SHA256(blob bytes) + LF",
-  "fileCount": 137,
-  "byteCount": 21392,
-  "sha256": "30298b1ff80043414921b7efdd390d4d43fb70ec999db48e6b5976ffdce756b3",
+  "fileCount": 145,
+  "byteCount": 22582,
+  "sha256": "7114ab5d3629c8b20bad7a72ae07c2cd1bc882f8582bab3eb8385ade5a0c10d3",
   "entries": [
     {
       "status": "A",
@@ -159,9 +159,9 @@
       "status": "M",
       "path": "contracts/gateway-release.v1.json",
       "mode": "100644",
-      "blob": "215a0b18c2422daa667e5065459a3993cb46e0b8",
-      "sha256": "7e8c1f3a3f50c527376ae42565aaef7d96ef08d19a4f0c8f9ac6251d02370ba3",
-      "byteCount": 1240
+      "blob": "7845cdbadd2ff4023da4ab1ed5428967ff660985",
+      "sha256": "e5de0a3e7f0b1e434506c8f48f9f5e0cfef7bcda112fd2272e43684f35df7ac6",
+      "byteCount": 2068
     },
     {
       "status": "A",
@@ -213,11 +213,19 @@
     },
     {
       "status": "A",
+      "path": "deploy/gateway-operations.py",
+      "mode": "100644",
+      "blob": "d7b7ae346ee88d5a69784722c0495b610ded8aed",
+      "sha256": "c8c255a356452ff427a384358b86811a40aa2260b70cfd640f78037ef9cc72cb",
+      "byteCount": 25305
+    },
+    {
+      "status": "A",
       "path": "deploy/gateway.compose.yml",
       "mode": "100644",
-      "blob": "7015bb411751b9503250860e6aa5969de7d95a71",
-      "sha256": "4454d5933bc380be72752ff68f37ff4d5d91f2a7b428d4a6154ab72f7f8d430b",
-      "byteCount": 1511
+      "blob": "f9450a05ae3af07574d5f1c27dd8ece932bad170",
+      "sha256": "0edd0e2a7c1f48f035b7d1c14f25ef1850802a691880fe88af2ada47072c0e42",
+      "byteCount": 1580
     },
     {
       "status": "A",
@@ -234,6 +242,22 @@
       "blob": "c39a63d7e40356c612d29bf112fabd05a75b9adb",
       "sha256": "e222e4b839232f7585356ce5ceb4d4255f9618385dc6ac632910e06b37ddeeea",
       "byteCount": 262
+    },
+    {
+      "status": "A",
+      "path": "deploy/mochirii-reaper-gateway-operations.service",
+      "mode": "100644",
+      "blob": "273b7ebdec2a201539c5f3625505b87d102cc6e2",
+      "sha256": "5fe165d4c248e223d9de4311e58e0e159207946d3850a56f64f19dea82db55ac",
+      "byteCount": 599
+    },
+    {
+      "status": "A",
+      "path": "deploy/mochirii-reaper-gateway-operations.timer",
+      "mode": "100644",
+      "blob": "da803ac721d98b1f033421ac73aef0d522a815a5",
+      "sha256": "c5cb00c3bcbec163f57e37ba47440ebae686c2fa122e476daafb86f95e908a26",
+      "byteCount": 212
     },
     {
       "status": "A",
@@ -271,9 +295,9 @@
       "status": "A",
       "path": "docs/operations/GATEWAY-DEPLOYMENT.md",
       "mode": "100644",
-      "blob": "f6ac064c12c5e422bc9a4657d3e9708916684676",
-      "sha256": "f8d432a797a43699452b191e2cf927c209f9fd6ae3c4a00097121fa976041af1",
-      "byteCount": 9479
+      "blob": "5f0b794e3dff610c4d9207d4d6a86af4af45b8ba",
+      "sha256": "095ad10aa6cc5ccb6a7073be997df1e6daf04b29136e0a3ff1ba39807b948c76",
+      "byteCount": 11220
     },
     {
       "status": "A",
@@ -295,9 +319,9 @@
       "status": "M",
       "path": "docs/runtime-operations.md",
       "mode": "100644",
-      "blob": "208847b5fe2aaf5360c584a5dd599e0fa88753e8",
-      "sha256": "1ba6d7240a1a586ad1a9138c16a2d5ce35c72e25815a60de9a012f816f0b38b6",
-      "byteCount": 3979
+      "blob": "522e6c61840557fe59269bf2706fb65558c860c5",
+      "sha256": "45ebc9f5691606667de12c9a97fc7b1fec32f044aec4c611b82a2a8523a890e7",
+      "byteCount": 6598
     },
     {
       "status": "D",
@@ -311,9 +335,9 @@
       "status": "M",
       "path": "package.json",
       "mode": "100644",
-      "blob": "dba3b9e2a82ce40abff165770c6e8ecd352de534",
-      "sha256": "99e48b9afde181a140465a920b21a3d75ae2ba09871e1aa759fcf97feb031878",
-      "byteCount": 2641
+      "blob": "8240b607ea3dc7abba7b54f54803690c24c051f8",
+      "sha256": "4f63ad92e87fa0733901bb6c2940549ad6954dc237ec069e88887f47a7f8787b",
+      "byteCount": 2740
     },
     {
       "status": "A",
@@ -351,9 +375,9 @@
       "status": "A",
       "path": "scripts/check-container-contract.mjs",
       "mode": "100644",
-      "blob": "a354eaeaa0b328c8f0ac07d9f626deaffe95e331",
-      "sha256": "05f7259bf00a2013e34a47144ed76b34ec119f9c971a05bfdfb80bf292baa715",
-      "byteCount": 9358
+      "blob": "221e4f53c79100ce7021885909983a4eb8399f77",
+      "sha256": "e556657bd175df59e9d3da2a2d491f0e4221a5c34c95a5b62d17ff81368493b7",
+      "byteCount": 9385
     },
     {
       "status": "M",
@@ -367,9 +391,9 @@
       "status": "A",
       "path": "scripts/check-gateway-deployment.mjs",
       "mode": "100644",
-      "blob": "19db8bf302e0f85d95ff5846dd451f70a44f2221",
-      "sha256": "f08e87f32b5773b7bb00843b9f3772238496c92bbf5a188cbdc214ed4b0c512b",
-      "byteCount": 9413
+      "blob": "dcb8a8e4f70ffc442c7a50d64066313ec8eccdc9",
+      "sha256": "6f0cc48f37ae33dbf6633a656660984cf71e35ac7d18f5781457cf220a497a5b",
+      "byteCount": 11638
     },
     {
       "status": "A",
@@ -383,9 +407,9 @@
       "status": "M",
       "path": "scripts/check-release-readiness.ts",
       "mode": "100644",
-      "blob": "2c72c99a17dd17384ae56ee8ee97eadf15d0f0c4",
-      "sha256": "c5c7e39ac44997290e31dbd6da28d2e26ecd1bfe12ba9d5ecedaf2cf0797f507",
-      "byteCount": 19923
+      "blob": "ecce3c8292726f8b9e7b706f285e2efbcd8f2f71",
+      "sha256": "64a473100fee7523763061f92296880c1da748733195992ba9720b8f0fb83d52",
+      "byteCount": 21622
     },
     {
       "status": "M",
@@ -421,11 +445,27 @@
     },
     {
       "status": "A",
+      "path": "scripts/run-gateway-operations-tests.mjs",
+      "mode": "100644",
+      "blob": "058be076dda60af36a81c0635ec8217c7e75520a",
+      "sha256": "c9b4ee0c99b0672f16b24453d606c4fcbcde895ef6e81998c20eb1abeb37286f",
+      "byteCount": 755
+    },
+    {
+      "status": "A",
       "path": "security/dependency-audit-exceptions.v1.json",
       "mode": "100644",
       "blob": "9e53e6fdd5dcd4ef6aee5f6f89d7bcff7495091c",
       "sha256": "a0f2d62da55fc7cef7c3910324858402c7fedc5083fd71634d335e9ac24079e4",
       "byteCount": 106
+    },
+    {
+      "status": "A",
+      "path": "src/checkpoint.ts",
+      "mode": "100644",
+      "blob": "b2c5b7e5a741b081a02c0431074d53d04871920a",
+      "sha256": "61f502dde95079ac0bcee4836c0f5798e7b0cc9b579ba1a81ad7d7445d7a1e02",
+      "byteCount": 9572
     },
     {
       "status": "M",
@@ -455,17 +495,17 @@
       "status": "M",
       "path": "src/index.ts",
       "mode": "100644",
-      "blob": "de3ed5acb3282a7bf758af908c8e75a551964102",
-      "sha256": "ab5bcfe1d30dffdb80378e9c3d096637f9ac467321fce9a2f2215f7d7b138eb6",
-      "byteCount": 4045
+      "blob": "3abb12afdb6bb76326586214ca78e4c09811c1d7",
+      "sha256": "f5ed7c3163a5826aaac2a4676d1b2804b998cb571f9fc5f9aacc652a613a4b4a",
+      "byteCount": 4680
     },
     {
       "status": "A",
       "path": "src/member-forwarder.ts",
       "mode": "100644",
-      "blob": "a7678f38e29f4a41f5677331312f7d1225693756",
-      "sha256": "cb2fb3463f7753169452a0a0adc5c8d48fdae185fa0ebd8008dd2b433ce075c1",
-      "byteCount": 15707
+      "blob": "80b08ff4dbb833564385218905e8abdd729859c8",
+      "sha256": "164166cdf38b254430e949bcb891277d6d8cf71ff2eedeb31428ff8383661f42",
+      "byteCount": 18639
     },
     {
       "status": "M",
@@ -474,6 +514,14 @@
       "blob": "91cfcff7d6afd5ed6879c2ec3ba33e5ba09bf9e2",
       "sha256": "cfaa5eea00ea9feac7922f89fcd590f9d5d605cfabb9ce1fc107aaa05d8e80e9",
       "byteCount": 11695
+    },
+    {
+      "status": "A",
+      "path": "src/restore-checkpoint.ts",
+      "mode": "100644",
+      "blob": "5ec3edafc3851bc083d3e4dafffde0b452192b75",
+      "sha256": "827f992a33ce99ac80ad5d8f477779633147181727394cac695492884e340af7",
+      "byteCount": 3723
     },
     {
       "status": "M",
@@ -1012,6 +1060,14 @@
       "byteCount": 9717
     },
     {
+      "status": "A",
+      "path": "tests/checkpoint.test.ts",
+      "mode": "100644",
+      "blob": "44aa619d6a407389bf54b944a50524b7bc24faa5",
+      "sha256": "265819c7c590e231fa329d0fcb3c2adac6d3807f9ec17f9f7f07f3082292e2ca",
+      "byteCount": 25579
+    },
+    {
       "status": "M",
       "path": "tests/command.test.ts",
       "mode": "100644",
@@ -1023,9 +1079,9 @@
       "status": "A",
       "path": "tests/container-contract.test.ts",
       "mode": "100644",
-      "blob": "04720bd93cecf4b4334e1c524f50e37451c2f710",
-      "sha256": "76301225f1f436aeac101c35c09efabb5651e697d460d1e850b9fb5431b25a79",
-      "byteCount": 3345
+      "blob": "6d7279a92a87d49dc27e5962f759b726ebf8cad1",
+      "sha256": "207a4934faeb9f7e4c19d29d8b445e61465238a7ab946487426ebc3b2782f86a",
+      "byteCount": 3372
     },
     {
       "status": "A",
@@ -1047,9 +1103,9 @@
       "status": "A",
       "path": "tests/gateway-deployment.test.ts",
       "mode": "100644",
-      "blob": "6ce313d519d80d2efee77b01547b3408e3de4e12",
-      "sha256": "2b05e6af0d58e1bc47a24b7cb6085b224617b14ead787999cac93ae247e5c2ee",
-      "byteCount": 11721
+      "blob": "ddad990fac9329a0778108afba3448b019fce06a",
+      "sha256": "231bf3bb7e2bd674944c9bf11f353f432ecc5e22273e40acb6e04f3734e368d2",
+      "byteCount": 13564
     },
     {
       "status": "A",
@@ -1058,6 +1114,14 @@
       "blob": "2e8eb42ab59e2aa44f07210c6c320ef6554b4087",
       "sha256": "e371f2411e5db5ca53b7d910d43fc847bafc47b39069da73022c93ab7d6db956",
       "byteCount": 34649
+    },
+    {
+      "status": "A",
+      "path": "tests/gateway-operations.test.py",
+      "mode": "100644",
+      "blob": "30e2f9072cf077483888a217fadd60451ed75214",
+      "sha256": "6028af341d2ee06f731e4797e6bd80474564e8a0b6d286e63541f8631b9c5e28",
+      "byteCount": 32658
     },
     {
       "status": "M",
@@ -1071,9 +1135,9 @@
       "status": "A",
       "path": "tests/member-forwarder.test.ts",
       "mode": "100644",
-      "blob": "2506025e1ef8043038cb9157f01a9c0c6ef03fb9",
-      "sha256": "0c5cd050cbb010fac70c787dd3a5634906dd94f42ab0785f2df718246c1c6459",
-      "byteCount": 29754
+      "blob": "ae6f6717ec8beb20fc711274db19db9498b89d46",
+      "sha256": "1de25fb7ff0bafd1ed706d4dc7ce0beb6eee073b8eb6ddae8e26ae00f9649939",
+      "byteCount": 30021
     },
     {
       "status": "M",

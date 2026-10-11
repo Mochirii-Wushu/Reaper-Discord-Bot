@@ -17,7 +17,8 @@
         "REAPER_HEALTH_STATE_PATH": "/tmp/mochirii-reaper-readiness.json",
         "REAPER_HEALTH_HEARTBEAT_MS": "30000",
         "REAPER_HEALTH_MAX_AGE_MS": "90000",
-        "REAPER_MEMBER_SYNC_STATE_PATH": "/var/lib/reaper/member-sync"
+        "REAPER_MEMBER_SYNC_STATE_PATH": "/var/lib/reaper/member-sync",
+        "REAPER_CHECKPOINT_PATH": "/var/lib/reaper/checkpoint.json"
       },
       "volumes": [
         {

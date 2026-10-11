@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-type DeploymentFiles = Record<"compose" | "lifecycle" | "health" | "timer" | "script", string>;
+type DeploymentFiles = Record<"compose" | "lifecycle" | "health" | "timer" | "script" | "operations" | "operationsTimer", string>;
 const checkerUrl = new URL("../scripts/check-gateway-deployment.mjs", import.meta.url);
 const { readGatewayDeployment, validateGatewayDeployment }: {
   readGatewayDeployment(): Promise<DeploymentFiles>;
@@ -104,6 +104,7 @@ describe("Gateway deployment contract", () => {
       (service: any) => { service.volumes[0].bind.create_host_path = true; },
       (service: any) => { service.volumes[0].source = "/tmp/gateway"; },
       (service: any) => { service.environment.REAPER_MEMBER_SYNC_STATE_PATH = "/tmp/member-sync"; },
+      (service: any) => { service.environment.REAPER_CHECKPOINT_PATH = "/tmp/checkpoint.json"; },
       (service: any) => { service.build = "."; },
       (service: any) => { service.image = "registry.test/reaper:latest"; },
       (service: any) => { service.env_file[0].format = "dotenv"; },
@@ -137,6 +138,31 @@ describe("Gateway deployment contract", () => {
       ["script", 'docker restart --time 20 "$container_id"', 'docker restart --time 20 "$container"'],
     ]) {
       expect(validateGatewayDeployment({ ...files, [key]: files[key as keyof typeof files].replace(from!, to!) }).length).toBeGreaterThan(0);
+    }
+  });
+
+  test("keeps outbound observation independent, bounded, and read-only outside its own state", () => {
+    for (const [key, from, to] of [
+      ["operations", "Wants=network-online.target", "Wants=mochirii-reaper-gateway.service"],
+      ["operations", "Type=oneshot", "Type=simple"],
+      ["operations", "python3 -I -B", "python3"],
+      ["operations", "StateDirectoryMode=0700", "StateDirectoryMode=0755"],
+      ["operations", "TimeoutStartSec=60", "TimeoutStartSec=infinity"],
+      ["operations", "LimitCORE=0", "LimitCORE=infinity"],
+      ["operations", "ProtectSystem=strict", "ProtectSystem=no"],
+      ["operations", "ReadWritePaths=/var/lib/mochirii-reaper-gateway-operations", "ReadWritePaths=/"],
+      ["operationsTimer", "OnBootSec=60s", "OnBootSec=0"],
+      ["operationsTimer", "OnUnitActiveSec=60s", "OnUnitActiveSec=1s"],
+      ["operationsTimer", "WantedBy=timers.target", "WantedBy=mochirii-reaper-gateway.service"],
+    ]) {
+      const name = key as keyof DeploymentFiles;
+      expect(validateGatewayDeployment({ ...files, [name]: files[name].replace(from!, to!) }).length).toBeGreaterThan(0);
+    }
+    for (const extra of ["PartOf=mochirii-reaper-gateway.service", "Requisite=mochirii-reaper-gateway.service"]) {
+      expect(validateGatewayDeployment({ ...files, operations: files.operations.replace("[Unit]", `[Unit]\n${extra}`) }).length).toBeGreaterThan(0);
+    }
+    for (const extra of ["EnvironmentFile=/etc/mochirii-reaper/gateway.env", "ExecStartPost=/usr/bin/docker restart mochirii-reaper-gateway"]) {
+      expect(validateGatewayDeployment({ ...files, operations: files.operations.replace("[Service]", `[Service]\n${extra}`) }).length).toBeGreaterThan(0);
     }
   });
 });

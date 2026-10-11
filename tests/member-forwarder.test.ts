@@ -345,11 +345,15 @@ describe("private durable member forwarding spool", () => {
       pauseClear = true;
       const original = worker.enqueue(member(), "guildMemberAdd");
       await clearStarted;
+      // Capture is queued before the overflow journal write. Its conservative
+      // state must still include the synchronously raised in-memory hold.
+      const checkpoint = worker.captureCheckpoint();
       const rejectionDurability = [];
       const observed = (admission) => admission.catch((error) => { rejectionDurability.push(durableHeld); throw error; });
       const burst = Array.from({ length: 256 }, () => observed(worker.enqueue(member(), "guildMemberUpdate")));
       const outcomes = Promise.allSettled([original, ...burst]);
       releaseClear();
+      assert.equal((await checkpoint).admissionHeld, true);
       await firstFault;
       assert.equal(firstFaultDurable, true);
       assert.notEqual(await fs.readFile(journalPath, "utf8"),
