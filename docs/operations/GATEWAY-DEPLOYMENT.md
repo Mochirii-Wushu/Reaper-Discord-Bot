@@ -28,12 +28,15 @@ Gateway hosting.
 
 ## Capacity and cost
 
-The candidate is one basic shared-CPU Droplet in the selected region, initially
-512 MiB RAM/10 GiB disk at the observed $4/month base price. The account/region
+The recommended candidate is one Basic Regular shared-CPU Droplet with
+1 GiB RAM, 1 vCPU, 25 GiB SSD and 1,000 GiB transfer at the observed $6/month
+base price. The account/region
 readback and exact paid resource approval remain in the private release packet.
 No backup, snapshot, extra volume, reserved IP, monitoring subscription, or paid
 add-on is enabled by the source. Recheck current prices and transfer allowances
-before provisioning; the next 1 GiB tier was observed at $6/month.
+before provisioning. [Current published tiers](https://www.digitalocean.com/pricing/droplets)
+support this recommendation; account capacity, taxes and transfer overage remain
+unverified. Do not provision until the exact paid-resource packet is approved.
 
 The service template caps the container at 256 MiB RAM with no swap, 0.5 CPU,
 64 PIDs, 1 MiB shared memory, and a 16 MiB readiness tmpfs. A local no-network
@@ -47,8 +50,8 @@ reboot, and full image security verification.
 
 Before activation, record host memory/disk headroom with the actual approved
 image during an idle and representative live soak. If the OS/daemon/container
-cannot retain safe measured headroom, stop before activation and request the
-1 GiB tier. Do not silently add swap, increase cost, or weaken limits. Apply and
+cannot retain safe measured headroom, stop before activation and review the
+approved tier. Do not silently add swap, increase cost, or weaken limits. Apply and
 verify an appropriate host filesystem quota/alert for the private spool; Compose
 alone does not supply a host disk quota.
 
@@ -129,9 +132,38 @@ Do not read a recovery vault or export existing provider secrets as a shortcut.
 The owner's local cloud-synced credential recovery folder is a recovery boundary,
 not source or runtime. Verify its protected access, actual cloud sync, encryption,
 and recovery metadata without printing values. The Droplet must continue while
-the workstation and sync client are offline. Private queue backup and restore
-need a separate encrypted, access-controlled policy; no paid backup or successful
-restore is claimed here.
+the workstation and sync client are offline. The selected checkpoint/retention
+policy is described in [runtime operations](../runtime-operations.md); source
+implementation does not prove a hosted backup or restore.
+
+Install the independent operations service/timer and reviewed Python bridge
+root-owned outside the image. Ubuntu 24.04 supplies Python 3.12; use
+`/usr/bin/python3 -I -B` with no extra Python packages. Its own root-owned
+mode0600 `/etc/mochirii-reaper/gateway-operations.env` contains only:
+
+```text
+REAPER_GATEWAY_OPERATIONS_URL
+REAPER_GATEWAY_OPERATIONS_HMAC_KEY
+REAPER_GATEWAY_OPERATIONS_BACKUP_REQUIRED
+REAPER_GATEWAY_OPERATIONS_AGE_RECIPIENT
+```
+
+The HMAC key is separate from the bot/member-sync and server-side maintenance
+secrets. A backup-enabled host has only the public age recipient. Keep both bot
+feature flags false during staging. Enable the observer timer independently
+from Gateway lifecycle so a stopped worker still reports unhealthy. The private
+observer state directory is root-owned mode0700; the container cannot edit it.
+
+Before installing `/opt/mochirii-reaper/bin/age`, verify the official age v1.3.2
+linux-amd64 archive SHA256
+`cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10`
+and its Sigsum proof with the two tag-pinned upstream keys and
+`sigsum-generic-2025-1` policy using `sigsum-verify` v0.13.1. The resulting
+mode0755 root-owned age binary SHA256 must be
+`eb7dd1b518f0a307c99cd97782623c5321da049154b04acd2d98d21aa7bc9b2c`;
+the bridge verifies it before execution. Follow the
+[tag-pinned upstream verification instructions](https://github.com/FiloSottile/age/blob/v1.3.2/SIGSUM.md).
+No private age identity or recovery folder is installed on the host.
 
 ## Capability and acceptance record
 

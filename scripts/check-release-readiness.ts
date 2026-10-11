@@ -18,6 +18,7 @@ type GatewayRelease = {
   toolchain: Record<string, string>;
   welcomeDmSha256: string;
   runtime: Record<string, boolean>;
+  operations: Record<string, unknown>;
   releaseRequirements: string[];
   activationBoundary: Record<string, boolean>;
 };
@@ -226,6 +227,39 @@ if ([null, {}, [], ...Object.keys(release.runtime).map((key) => ({ ...release.ru
   { ...release.runtime, statefulApplicationData: "true" }, { ...release.runtime, extra: true },
 ].some(gatewayRuntimeValid)) fail("Gateway runtime hostile contract was accepted.");
 
+const expectedOperations = {
+  protocolOwner: "Mochirii-Wushu/Mochirii-Website",
+  protocolContract: "docs/integrations/reaper-gateway-operations.v1.json",
+  checkpointPathEnvironmentVariable: "REAPER_CHECKPOINT_PATH",
+  captureIntervalSeconds: 300,
+  hostTimerIntervalSeconds: 60,
+  heartbeatMaximumAgeSeconds: 180,
+  checkpointCheckMaximumAgeSeconds: 900,
+  cipher: "age v1.3.2 X25519",
+  maximumCiphertextBytes: 16777216,
+  maximumObjects: 15,
+  maximumStorageBytes: 251658240,
+  retainedLatest: 8,
+  retainedDaily: 7,
+  retentionTimezone: "Asia/Singapore",
+  privateRecoveryIdentityOnWorkerAllowed: false,
+  workerServiceRoleKeyAllowed: false,
+};
+function operationsValid(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const operations = value as Record<string, unknown>;
+  return Object.keys(operations).length === Object.keys(expectedOperations).length &&
+    Object.entries(expectedOperations).every(([key, expected]) => operations[key] === expected);
+}
+if (!operationsValid(release.operations)) fail("Gateway recovery and monitoring contract drifted.");
+if ([null, {}, [],
+  { ...expectedOperations, workerServiceRoleKeyAllowed: true },
+  { ...expectedOperations, privateRecoveryIdentityOnWorkerAllowed: true },
+  { ...expectedOperations, checkpointCheckMaximumAgeSeconds: 901 },
+  { ...expectedOperations, maximumStorageBytes: 251658241 },
+  { ...expectedOperations, extra: true },
+].some(operationsValid)) fail("Gateway recovery hostile contract was accepted.");
+
 const requirements = new Set(release.releaseRequirements);
 for (
   const requirement of [
@@ -234,6 +268,9 @@ for (
     "provenance-attestation",
     "readiness-readback",
     "restart-and-session-resume-proof",
+    "external-alert-delivery-proof",
+    "encrypted-checkpoint-receipt-proof",
+    "isolated-validate-only-restore-proof",
     "rollback-proof",
     "workstation-off-proof",
   ]
@@ -252,7 +289,7 @@ const submitSource = read("src/submit.ts");
 const environmentSource = read(".env.example");
 const registrationSource = read("src/register-commands.ts");
 const expectedIndexSha256 =
-  "ab5bcfe1d30dffdb80378e9c3d096637f9ac467321fce9a2f2215f7d7b138eb6";
+  "f5ed7c3163a5826aaac2a4676d1b2804b998cb571f9fc5f9aacc652a613a4b4a";
 const expectedRegistrationSha256 =
   "a4d92870238c746bc4c6bae01acc2be1c95db6984a9f1db1a7cd7e75b3cabc1b";
 

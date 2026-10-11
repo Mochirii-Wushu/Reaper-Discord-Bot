@@ -17,7 +17,7 @@
     "audit:production": "node scripts/audit-dependencies.mjs --scope=production",
     "audit:runtime": "bun run audit:production",
     "build": "bun node_modules/typescript/bin/tsc -p tsconfig.build.json",
-    "check": "bun run check:artifact && bun run audit:all && bun run typecheck && bun run test && bun run build && bun run release:check && bun run edge:contracts && bun run edge:fmt && bun run edge:check && bun run edge:test",
+    "check": "bun run check:artifact && bun run audit:all && bun run typecheck && bun run test && bun run test:operations && bun run build && bun run release:check && bun run edge:contracts && bun run edge:fmt && bun run edge:check && bun run edge:test",
     "check:artifact": "node scripts/check-container-contract.mjs && bun run check:deployment && bun run check:publication",
     "check:deployment": "node scripts/check-gateway-deployment.mjs",
     "check:publication": "bun scripts/check-gateway-image.ts",
@@ -34,6 +34,7 @@
     "release:check": "bun scripts/check-release-readiness.ts",
     "start": "node dist/index.js",
     "test": "bun test tests",
+    "test:operations": "node scripts/run-gateway-operations-tests.mjs",
     "typecheck": "bun node_modules/typescript/bin/tsc --noEmit",
     "website:compat": "bun scripts/check-website-source-compatibility.ts"
   },

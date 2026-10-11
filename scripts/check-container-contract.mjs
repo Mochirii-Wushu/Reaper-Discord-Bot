@@ -85,7 +85,7 @@ if (packageJson.engines?.node !== "22.23.3" || packageJson.engines?.bun !== "1.3
 if (packageJson.scripts?.start !== "node dist/index.js") errors.push("Package start command drifted from the developer runtime contract.");
 if (packageJson.scripts?.["audit:production"] !== "node scripts/audit-dependencies.mjs --scope=production") errors.push("Production dependency audit command drifted.");
 if (packageJson.scripts?.["audit:complete"] !== "node scripts/audit-dependencies.mjs --scope=complete") errors.push("Complete dependency audit command drifted.");
-const expectedCheck = "bun run check:artifact && bun run audit:all && bun run typecheck && bun run test && bun run build && bun run release:check && bun run edge:contracts && bun run edge:fmt && bun run edge:check && bun run edge:test";
+const expectedCheck = "bun run check:artifact && bun run audit:all && bun run typecheck && bun run test && bun run test:operations && bun run build && bun run release:check && bun run edge:contracts && bun run edge:fmt && bun run edge:check && bun run edge:test";
 if (packageJson.scripts?.check !== expectedCheck) errors.push("CI check must audit both graphs before executing dependency code.");
 try {
   validateAuditPolicy(auditPolicy);

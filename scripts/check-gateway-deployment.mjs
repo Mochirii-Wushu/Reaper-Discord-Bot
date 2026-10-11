@@ -9,6 +9,8 @@ const paths = {
   health: "deploy/mochirii-reaper-gateway-health.service",
   timer: "deploy/mochirii-reaper-gateway-health.timer",
   script: "deploy/gateway-health.sh",
+  operations: "deploy/mochirii-reaper-gateway-operations.service",
+  operationsTimer: "deploy/mochirii-reaper-gateway-operations.timer",
 };
 
 export async function readGatewayDeployment(base = root) {
@@ -56,6 +58,7 @@ export function validateGatewayDeployment(files) {
       REAPER_HEALTH_HEARTBEAT_MS: "30000",
       REAPER_HEALTH_MAX_AGE_MS: "90000",
       REAPER_MEMBER_SYNC_STATE_PATH: "/var/lib/reaper/member-sync",
+      REAPER_CHECKPOINT_PATH: "/var/lib/reaper/checkpoint.json",
     },
     volumes: [{ type: "bind", source: "/var/lib/mochirii-reaper/gateway", target: "/var/lib/reaper", read_only: false, bind: { create_host_path: false } }],
     tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16777216,mode=0700,uid=65532,gid=65532"],
@@ -72,11 +75,13 @@ export function validateGatewayDeployment(files) {
   require(equals(Object.keys(service).sort(), Object.keys(required).sort()), "Unexpected service options may add builds, privileges, mounts, commands, or ports.");
   for (const [key, expected] of Object.entries(required)) require(equals(service[key], expected), `Gateway service ${key} violates the deployment contract.`);
 
-  let lifecycle, health, timer;
+  let lifecycle, health, timer, operations, operationsTimer;
   try {
     lifecycle = unitEntries(files.lifecycle);
     health = unitEntries(files.health);
     timer = unitEntries(files.timer);
+    operations = unitEntries(files.operations);
+    operationsTimer = unitEntries(files.operationsTimer);
   } catch { return [...errors, "Invalid systemd unit syntax."]; }
   const exact = (unit, key, expected) => require(equals(unit.get(key), [expected]), `systemd ${key} must equal ${expected}.`);
   const only = (unit, allowed) => require([...unit.keys()].every((key) => allowed.includes(key)), "Unreviewed systemd settings can alter lifecycle or privilege boundaries.");
@@ -119,6 +124,34 @@ export function validateGatewayDeployment(files) {
   exact(timer, "Timer.AccuracySec", "5s");
   exact(timer, "Timer.Unit", "mochirii-reaper-gateway-health.service");
   exact(timer, "Install.WantedBy", "mochirii-reaper-gateway.service");
+  // This independent observer must still run when the Gateway is stopped.
+  only(operations, ["Unit.Description", "Unit.Wants", "Unit.After", "Service.Type", "Service.User", "Service.Group", "Service.ExecStart", "Service.StateDirectory", "Service.StateDirectoryMode", "Service.TimeoutStartSec", "Service.UMask", "Service.NoNewPrivileges", "Service.PrivateTmp", "Service.PrivateDevices", "Service.ProtectSystem", "Service.ProtectHome", "Service.RestrictAddressFamilies", "Service.ReadWritePaths", "Service.LimitCORE"]);
+  only(operationsTimer, ["Unit.Description", "Timer.OnBootSec", "Timer.OnUnitActiveSec", "Timer.AccuracySec", "Timer.Unit", "Install.WantedBy"]);
+  for (const [key, expected] of Object.entries({
+    "Unit.Wants": "network-online.target",
+    "Unit.After": "network-online.target docker.service",
+    "Service.Type": "oneshot",
+    "Service.User": "root",
+    "Service.Group": "root",
+    "Service.ExecStart": "/usr/bin/python3 -I -B /opt/mochirii-reaper/deploy/gateway-operations.py",
+    "Service.StateDirectory": "mochirii-reaper-gateway-operations",
+    "Service.StateDirectoryMode": "0700",
+    "Service.TimeoutStartSec": "60",
+    "Service.UMask": "0077",
+    "Service.NoNewPrivileges": "yes",
+    "Service.PrivateTmp": "yes",
+    "Service.PrivateDevices": "yes",
+    "Service.ProtectSystem": "strict",
+    "Service.ProtectHome": "yes",
+    "Service.RestrictAddressFamilies": "AF_UNIX AF_INET AF_INET6",
+    "Service.ReadWritePaths": "/var/lib/mochirii-reaper-gateway-operations",
+    "Service.LimitCORE": "0",
+  })) exact(operations, key, expected);
+  exact(operationsTimer, "Timer.OnBootSec", "60s");
+  exact(operationsTimer, "Timer.OnUnitActiveSec", "60s");
+  exact(operationsTimer, "Timer.AccuracySec", "5s");
+  exact(operationsTimer, "Timer.Unit", "mochirii-reaper-gateway-operations.service");
+  exact(operationsTimer, "Install.WantedBy", "timers.target");
   for (const unit of [lifecycle, health]) {
     exact(unit, "Service.NoNewPrivileges", "yes");
     exact(unit, "Service.UMask", "0077");

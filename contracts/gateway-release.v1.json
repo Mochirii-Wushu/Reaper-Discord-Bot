@@ -20,6 +20,24 @@
     "automaticRestartRequired": true,
     "statefulApplicationData": true
   },
+  "operations": {
+    "protocolOwner": "Mochirii-Wushu/Mochirii-Website",
+    "protocolContract": "docs/integrations/reaper-gateway-operations.v1.json",
+    "checkpointPathEnvironmentVariable": "REAPER_CHECKPOINT_PATH",
+    "captureIntervalSeconds": 300,
+    "hostTimerIntervalSeconds": 60,
+    "heartbeatMaximumAgeSeconds": 180,
+    "checkpointCheckMaximumAgeSeconds": 900,
+    "cipher": "age v1.3.2 X25519",
+    "maximumCiphertextBytes": 16777216,
+    "maximumObjects": 15,
+    "maximumStorageBytes": 251658240,
+    "retainedLatest": 8,
+    "retainedDaily": 7,
+    "retentionTimezone": "Asia/Singapore",
+    "privateRecoveryIdentityOnWorkerAllowed": false,
+    "workerServiceRoleKeyAllowed": false
+  },
   "releaseRequirements": [
     "reviewed-source-commit",
     "immutable-artifact-digest",
@@ -28,6 +46,9 @@
     "secret-contract-readback",
     "readiness-readback",
     "restart-and-session-resume-proof",
+    "external-alert-delivery-proof",
+    "encrypted-checkpoint-receipt-proof",
+    "isolated-validate-only-restore-proof",
     "rollback-proof",
     "workstation-off-proof"
   ],
