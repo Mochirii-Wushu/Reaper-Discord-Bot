@@ -403,6 +403,80 @@ describe("exact dormant image workflow", () => {
     }
   });
 
+  test("runs every Skopeo mount operation as the runner without weakening access controls", () => {
+    const runnerUser = '--user "$(id -u):$(id -g)"';
+    const calls = (["build", "publish"] as const).flatMap((jobName) =>
+      workflow().jobs[jobName].steps.flatMap((step, stepIndex) =>
+        (step.run ?? "").split("\n").flatMap((line, lineIndex) =>
+          line.includes("docker run ") && line.includes('"$SKOPEO_IMAGE"')
+            ? [{ jobName, stepIndex, lineIndex, line }] : [])));
+    expect(calls).toHaveLength(6);
+    expect(calls.filter(({ jobName }) => jobName === "build")).toHaveLength(2);
+    for (const { jobName, stepIndex, lineIndex, line } of calls) {
+      for (const flag of [runnerUser, "--rm", "--read-only", "--cap-drop ALL", "--security-opt no-new-privileges"]) {
+        expect(line).toContain(flag);
+      }
+      const mounts = [];
+      expect(line).not.toContain('--volume "$RUNNER_TEMP:/output"');
+      expect(line).not.toContain("oci:/layout");
+      if (line.includes("oci-archive:/bundle/gateway.oci.tar")) {
+        mounts.push('--volume "$RUNNER_TEMP/skopeo-tmp:/var/tmp"', '--volume "$BUNDLE:/bundle:ro"');
+      }
+      if (line.includes("docker-archive:/output/runtime.tar")) mounts.push('--volume "$RUNNER_TEMP/gateway-conversion:/output"');
+      if (line.includes("--authfile /auth.json") || line.includes("--dest-authfile /auth.json")) {
+        mounts.push('--volume "$auth:/auth.json:ro"');
+      }
+      for (const mount of mounts) expect(line).toContain(mount);
+      if (!line.includes("docker://")) expect(line).toContain("--network none");
+      for (const [from, to] of [
+        [runnerUser, ""], [runnerUser, "--user 0:0"],
+        [runnerUser, '--user "$(id -u):0"'], [runnerUser, "--user 65532:65532"],
+        ["--cap-drop ALL", "--cap-add DAC_OVERRIDE"], ["--read-only", "--privileged"],
+        ["--security-opt no-new-privileges", ""],
+        ...mounts.map((mount) => [mount, mount.includes(":ro") ? mount.replace(":ro", ":rw") : ""]),
+      ]) rejectWorkflow((w) => {
+        const step = w.jobs[jobName].steps[stepIndex]!;
+        const lines = step.run!.split("\n");
+        lines[lineIndex] = lines[lineIndex]!.replace(from!, to!);
+        step.run = lines.join("\n");
+      });
+    }
+    rejectWorkflow((w) => {
+      const step = command(w.jobs.publish, 'chmod 0600 "$auth"');
+      step.run = step.run!.replace('chmod 0600 "$auth"', 'chmod 0666 "$auth"');
+    });
+    rejectWorkflow((w) => {
+      const step = command(w.jobs.build, 'mkdir -p "$RUNNER_TEMP/skopeo-tmp"');
+      step.run = step.run!.replace('mkdir -p "$RUNNER_TEMP/skopeo-tmp"', 'mkdir -p "$RUNNER_TEMP/skopeo-tmp"\nchmod -R 0777 "$RUNNER_TEMP"');
+    });
+  });
+
+  test("isolates conversion output while retaining the original archive transport", () => {
+    const message = "Conversion must isolate writable output from the verified archive.";
+    const source = command(workflow().jobs.build, "docker-archive:/output/runtime.tar").run!;
+    for (const fragment of [
+      'mkdir -p "$RUNNER_TEMP/skopeo-tmp" "$RUNNER_TEMP/gateway-conversion"',
+      'trivy image --input "$RUNNER_TEMP/gateway-conversion/runtime.tar"',
+      'docker load --input "$RUNNER_TEMP/gateway-conversion/runtime.tar"',
+    ]) expect(source).toContain(fragment);
+    for (const [from, to] of [
+      ['--volume "$RUNNER_TEMP/gateway-conversion:/output"', '--volume "$RUNNER_TEMP:/output"'],
+      ['--volume "$RUNNER_TEMP/gateway-conversion:/output"', '--volume "$BUNDLE:/output"'],
+      ["copy oci-archive:/bundle/gateway.oci.tar", "copy oci:/layout"],
+      ['trivy image --input "$RUNNER_TEMP/gateway-conversion/runtime.tar"', 'trivy image --input "$RUNNER_TEMP/runtime.tar"'],
+      ['docker load --input "$RUNNER_TEMP/gateway-conversion/runtime.tar"', 'docker load --input "$RUNNER_TEMP/runtime.tar"'],
+    ]) {
+      const w = workflow();
+      const step = command(w.jobs.build, "docker-archive:/output/runtime.tar");
+      step.run = step.run!.replaceAll(from!, to!);
+      expect(validateGatewayImageWorkflow(JSON.stringify(w), publicationContract)).toContain(message);
+      rejectWorkflow((candidate) => {
+        const conversion = command(candidate.jobs.build, "docker-archive:/output/runtime.tar");
+        conversion.run = conversion.run!.replaceAll(from!, to!);
+      });
+    }
+  });
+
   test("rejects automatic or additional events, optional source inputs and global write scopes", () => {
     for (const event of ["push", "pull_request", "pull_request_target", "workflow_run", "schedule"]) {
       rejectWorkflow((w) => { w.on[event] = {}; });
