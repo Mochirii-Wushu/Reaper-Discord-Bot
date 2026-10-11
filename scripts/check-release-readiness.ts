@@ -127,7 +127,7 @@ const manifest = json<PackageManifest>("package.json");
 if (
   manifest.packageManager !== "bun@1.3.14" ||
   manifest.engines?.bun !== "1.3.14" ||
-  manifest.engines?.node !== "22.23.2"
+  manifest.engines?.node !== "22.23.3"
 ) fail("Repository toolchains are not pinned to the reviewed versions.");
 for (
   const script of [
@@ -208,7 +208,7 @@ if (
   release.repository !== "Mochirii-Wushu/Reaper-Discord-Bot" ||
   release.entrypoint !== "dist/index.js" ||
   release.toolchain.bun !== "1.3.14" ||
-  release.toolchain.node !== "22.23.2" ||
+  release.toolchain.node !== "22.23.3" ||
   release.welcomeDmSha256 !== welcomeHash
 ) fail("Gateway release contract or approved welcome message drifted.");
 
