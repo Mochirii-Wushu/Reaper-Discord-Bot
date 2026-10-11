@@ -34,6 +34,8 @@ except ImportError:  # The installed service requires Linux; pure tests are port
 
 MAX_CIPHER = 16 * 1024 * 1024
 MAX_RESPONSE = 16 * 1024
+MIN_AVAILABLE_BYTES = 1024 * 1024 * 1024
+MIN_AVAILABLE_INODES = 1024
 FUNCTION_PATH = "/functions/v1/reaper-gateway-operations"
 UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\Z")
 SHA = re.compile(r"[0-9a-f]{64}\Z")
@@ -318,6 +320,40 @@ def readiness(image: str, latch: Path) -> bool:
         return False
 
 
+def storage_capacity(gateway: Path, operations: Path) -> bool:
+    """Observe private directory metadata only; reserves are not disk quotas."""
+    try:
+        for path, owner in ((gateway, 65532), (operations, 0)):
+            check_ancestry(path, owner)
+            before = path.lstat()
+            check_directory(before, owner)
+            descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) |
+                                 getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
+            try:
+                opened = os.fstat(descriptor)
+                check_directory(opened, owner)
+                volume = os.fstatvfs(descriptor)
+                after = os.fstat(descriptor)
+                current = path.lstat()
+                identity = (before.st_dev, before.st_ino, before.st_mode, before.st_uid, before.st_gid)
+                require(all((info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_gid) == identity
+                            for info in (opened, after, current)))
+                check_ancestry(path, owner)
+                counts = (volume.f_frsize, volume.f_blocks, volume.f_bfree, volume.f_bavail,
+                          volume.f_files, volume.f_ffree, volume.f_favail, volume.f_flag)
+                require(all(type(value) is int and value >= 0 for value in counts) and
+                        volume.f_frsize > 0 and 0 <= volume.f_bavail <= volume.f_bfree <= volume.f_blocks and
+                        0 <= volume.f_favail <= volume.f_ffree <= volume.f_files and
+                        not volume.f_flag & getattr(os, "ST_RDONLY", 1))
+                require(volume.f_bavail * volume.f_frsize > MIN_AVAILABLE_BYTES and
+                        volume.f_favail > MIN_AVAILABLE_INODES)
+            finally:
+                os.close(descriptor)
+        return True
+    except (Unavailable, OSError, ValueError, AttributeError):
+        return False
+
+
 def checkpoint(snapshot_path: Path, status_path: Path, now: float | None = None) -> tuple[dict, dict, bytes]:
     require(snapshot_path.parent == status_path.parent)
     check_directory(snapshot_path.parent.lstat(), 65532)
@@ -478,6 +514,8 @@ def run_once(config: Config, store: Store, remote: Remote, snapshot_path: Path, 
              age_path: Path, latch: Path, now: float | None = None) -> bool:
     observed = time.time() if now is None else now
     healthy = readiness(config.image, latch)
+    capacity = storage_capacity(snapshot_path.parent, store.directory)
+    healthy = healthy and capacity
     checkpoint_id = captured_at = checked_at = None
     if config.backup_required:
         try:

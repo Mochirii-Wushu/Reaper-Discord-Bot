@@ -9,7 +9,7 @@
   "framing": "rows ASCII-sorted by path; each row is status + NUL + path + NUL + mode + NUL + Git blob + NUL + lowercase SHA256(blob bytes) + LF",
   "fileCount": 145,
   "byteCount": 22582,
-  "sha256": "7114ab5d3629c8b20bad7a72ae07c2cd1bc882f8582bab3eb8385ade5a0c10d3",
+  "sha256": "5d37be99f41984e5c75119c21970ff5cdd9a53733361b1a949a33b945538000e",
   "entries": [
     {
       "status": "A",
@@ -215,9 +215,9 @@
       "status": "A",
       "path": "deploy/gateway-operations.py",
       "mode": "100644",
-      "blob": "d7b7ae346ee88d5a69784722c0495b610ded8aed",
-      "sha256": "c8c255a356452ff427a384358b86811a40aa2260b70cfd640f78037ef9cc72cb",
-      "byteCount": 25305
+      "blob": "73dcd69194e0ee4e11ddb57d70a76c9d8de43a07",
+      "sha256": "67d6778c55c0c8ec60bc24351d6aae36943bc837c974662bf88f7c3ceeecce61",
+      "byteCount": 27408
     },
     {
       "status": "A",
@@ -295,9 +295,9 @@
       "status": "A",
       "path": "docs/operations/GATEWAY-DEPLOYMENT.md",
       "mode": "100644",
-      "blob": "5f0b794e3dff610c4d9207d4d6a86af4af45b8ba",
-      "sha256": "095ad10aa6cc5ccb6a7073be997df1e6daf04b29136e0a3ff1ba39807b948c76",
-      "byteCount": 11220
+      "blob": "f55f874742195471dd4c0d9b0ccb64becae80709",
+      "sha256": "bfc176e91aef67c8c4d665a1982f452e3d5b48247fbb19055d25f2ba64dd61a6",
+      "byteCount": 12509
     },
     {
       "status": "A",
@@ -319,9 +319,9 @@
       "status": "M",
       "path": "docs/runtime-operations.md",
       "mode": "100644",
-      "blob": "522e6c61840557fe59269bf2706fb65558c860c5",
-      "sha256": "45ebc9f5691606667de12c9a97fc7b1fec32f044aec4c611b82a2a8523a890e7",
-      "byteCount": 6598
+      "blob": "378065b0a13cc9058d65fa70bb826aa3b8e03833",
+      "sha256": "69febe6fa9a9c54991ba994d2659b0b629c5e3f76cd2efe3d25ef63d2fa86bc0",
+      "byteCount": 7784
     },
     {
       "status": "D",
@@ -1119,9 +1119,9 @@
       "status": "A",
       "path": "tests/gateway-operations.test.py",
       "mode": "100644",
-      "blob": "30e2f9072cf077483888a217fadd60451ed75214",
-      "sha256": "6028af341d2ee06f731e4797e6bd80474564e8a0b6d286e63541f8631b9c5e28",
-      "byteCount": 32658
+      "blob": "90816665c0b0ce0753b78591d1fa01deda2d4b79",
+      "sha256": "2572d359ba715296fd890f22616e5f4420c777c6d9811993472cc4f07583d1ba",
+      "byteCount": 42108
     },
     {
       "status": "M",
