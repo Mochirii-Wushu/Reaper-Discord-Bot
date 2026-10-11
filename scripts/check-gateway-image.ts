@@ -8,7 +8,7 @@ import {
   PUBLICATION_REPOSITORY,
 } from "./gateway-image-publication.js";
 
-const expectedContractSha256 = "d4dd5202c2731a252ceef7d7fa343851268fa7724e61f746488d59a4672c32e2";
+const expectedContractSha256 = "db56d3dec2fbf1e1424b152868210950d5d9ce561b6619f79cdc8a1e510a641f";
 const hash = (value: string): string =>
   createHash("sha256").update(value, "utf8").digest("hex");
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -106,6 +106,19 @@ export function validateGatewayImageWorkflow(source: string, contract: unknown):
         (typeof step.uses === "string" && !/^[a-z0-9-]+\/[a-z0-9-]+@[0-9a-f]{40}$/i.test(step.uses))
       ) errors.push("Steps cannot add conditional/error bypasses or mutable Actions.");
     });
+    if (jobName === "build") {
+      const conversions = job.steps.filter((step) => isRecord(step) &&
+        typeof step.run === "string" && step.run.includes("docker-archive:/output/runtime.tar"));
+      const run = conversions.length === 1 && isRecord(conversions[0]) ? conversions[0].run : null;
+      if (typeof run !== "string" ||
+        !run.includes('--volume "$RUNNER_TEMP/gateway-conversion:/output"') ||
+        run.includes('--volume "$RUNNER_TEMP:/output"') ||
+        !run.includes("copy oci-archive:/bundle/gateway.oci.tar docker-archive:/output/runtime.tar") ||
+        !run.includes('trivy image --input "$RUNNER_TEMP/gateway-conversion/runtime.tar"') ||
+        !run.includes('docker load --input "$RUNNER_TEMP/gateway-conversion/runtime.tar"')) {
+        errors.push("Conversion must isolate writable output from the verified archive.");
+      }
+    }
   }
   if (
     contract.repository !== PUBLICATION_REPOSITORY ||
