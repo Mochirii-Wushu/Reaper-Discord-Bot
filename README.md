@@ -9,7 +9,7 @@ moderator tools, live raffle announcements, and private new-member welcomes.
   event and rank synchronization, photo-day polls, and moderation checks.
 - Member-event forwarding for the reviewed pending-verification workflow.
 - Live raffle message delivery with optional replay media.
-- A persistent welcome worker that sends private DMs without a public fallback.
+- A welcome service implementation for private DMs, with no public fallback.
 - Command registration, tests, deployment contracts, and recovery tools.
 
 The source also retains legacy spotlight-poll functions and an inactive
@@ -17,10 +17,14 @@ gallery Gateway fallback. Their presence does not make them active features.
 
 ## Current status
 
-This repository owns the six functions listed in
+The [welcome-service release guide](docs/operations/GATEWAY-DEPLOYMENT.md)
+records the hosted welcome service as not deployed. Private welcome messages
+are implemented, but are not yet an available hosted feature.
+
+This repository maintains the six functions listed in
 [the deployment contract](contracts/reaper-edge-deployment.v1.json), plus the
-welcome worker. Website remains the production writer until a separately
-approved single-writer cutover. Source checks do not establish that this
+welcome service. Website continues to run the existing Discord functions until
+a separately approved transfer. Source checks do not establish that this
 revision is deployed.
 
 The Website repository continues to own shared identity, database migrations,
@@ -57,8 +61,9 @@ guide before running those commands.
   need Administrator, Message Content, Presences, or role-management permission.
 - Pending-verification forwarding is disabled by default. It requires the
   compatible backend release and never directly changes roles.
-- Ambiguous deliveries retain their original identity for reconciliation;
-  retries must not create a second live writer.
+- If a send may have succeeded, check that same delivery before trying again.
+  Keep its original delivery ID, and never run competing services that can
+  send the same update.
 - Functions without gateway JWT verification must enforce their documented
   signature, HMAC, or shared-secret checks.
 
