@@ -8,7 +8,7 @@ import {
   PUBLICATION_REPOSITORY,
 } from "./gateway-image-publication.js";
 
-const expectedContractSha256 = "f4e846e161ba37c3f701bdfd91ea8388c04b0d78cdd0321bcf01fffae5f9052b";
+const expectedContractSha256 = "6e74aa1181ee1d30341a5f308cba41322344efb6eb6db78c97e181b71d2f6d32";
 const hash = (value: string): string =>
   createHash("sha256").update(value, "utf8").digest("hex");
 const isRecord = (value: unknown): value is Record<string, unknown> =>

@@ -9,7 +9,7 @@
   "framing": "rows ASCII-sorted by path; each row is status + NUL + path + NUL + mode + NUL + Git blob + NUL + lowercase SHA256(blob bytes) + LF",
   "fileCount": 145,
   "byteCount": 22582,
-  "sha256": "5d37be99f41984e5c75119c21970ff5cdd9a53733361b1a949a33b945538000e",
+  "sha256": "314fc82ea88035adde9efafbc694f44b732c872e0a4ed2c04b4122165e0108f5",
   "entries": [
     {
       "status": "A",
@@ -39,16 +39,16 @@
       "status": "M",
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "blob": "ad747d8b6ccc1677ab8087c3f80456f57c4a2502",
-      "sha256": "2fb4d22992f9bf6af3ab3675f6e12919d9cb0e1984f23d018fffea41b6fff618",
+      "blob": "4d724d0e4ad7787848c8f2657db6e730841a1f3f",
+      "sha256": "fa67fde491d907d8f32c1794017835756ba9cd5b94fa28d87362375fc91eac0d",
       "byteCount": 2262
     },
     {
       "status": "A",
       "path": ".github/workflows/gateway-image.yml",
       "mode": "100644",
-      "blob": "708c362a61d4a2474b069fd27e16c8a5df828b6e",
-      "sha256": "5925f54a4698691f145afb78eb14a1552c45d398d07bbbadf11ee86dc93921ba",
+      "blob": "5e77facead5d5d8df6eca722825e23102b7b0f9d",
+      "sha256": "363e5c2602699ceb2ff51a69527538d388934a97d81ddb5f405a50d4e927fa2e",
       "byteCount": 15944
     },
     {
@@ -71,8 +71,8 @@
       "status": "A",
       "path": "Dockerfile",
       "mode": "100644",
-      "blob": "0adc4e2e0207397a89bb1f7a9924b162edccfbb0",
-      "sha256": "81264061e007deb2943bdb3dc6adf70145183e4d6ada7c07c0769f4f77213fd4",
+      "blob": "1086a4ca88eb19387b36a4e4c4b90dca62118602",
+      "sha256": "7286b66b2cc731e10482d173be1fbfd6abbae59982cae8ec1b1b1a7222ff8156",
       "byteCount": 2523
     },
     {
@@ -95,8 +95,8 @@
       "status": "M",
       "path": "bun.lock",
       "mode": "100644",
-      "blob": "a1836a1e247aabe46c00d190d043aa809ce4de88",
-      "sha256": "d015f7ebf2c1e3573eb54dc2ed5fc47ec573e2c1f360fb286a8499d71619439c",
+      "blob": "1f75dfaf65f9dabce43053efcc834303789de323",
+      "sha256": "8efe2cc7b8df2fa82f7636b74882f3fa66cdce0af0ed45c84fc2221eb68bfadb",
       "byteCount": 7483
     },
     {
@@ -151,16 +151,16 @@
       "status": "A",
       "path": "contracts/gateway-image-publication.v1.json",
       "mode": "100644",
-      "blob": "3a5c1c507ec6d08dfc9552bbae7f39dd236cebc9",
-      "sha256": "840dcb1059d0249b25fd4bdc94a731986b1752325006d2136c6b7fbf13e5fecd",
+      "blob": "7e5a26e3e7cc5b2b167db2ecab06b1065580ad11",
+      "sha256": "844669b777a46e2e3d6ae1d23e0b5de8840106a0171e8453ec9616769636043c",
       "byteCount": 3179
     },
     {
       "status": "M",
       "path": "contracts/gateway-release.v1.json",
       "mode": "100644",
-      "blob": "7845cdbadd2ff4023da4ab1ed5428967ff660985",
-      "sha256": "e5de0a3e7f0b1e434506c8f48f9f5e0cfef7bcda112fd2272e43684f35df7ac6",
+      "blob": "b38949987dc1d922edaed85caa986d282028bfe7",
+      "sha256": "31b405d7606d08bdd188a65e8fbc314173d8a31f80e525fb7c201c0cd7129d1e",
       "byteCount": 2068
     },
     {
@@ -271,8 +271,8 @@
       "status": "M",
       "path": "docs/dependency-security.md",
       "mode": "100644",
-      "blob": "619132b0d0d0f830f0555b3d581f5d71e74c99a9",
-      "sha256": "4269d19c133d9f52c2dd86db88e9ad26ed04383f2679d77eb96b274d177f0920",
+      "blob": "99630c4e320a1f33b04ce86ce541fac5d98e21a0",
+      "sha256": "7b8d31262600d09add6eb05bfa4d3346d7fa7fc0e0df97a6723520e6a10881f0",
       "byteCount": 1852
     },
     {
@@ -287,8 +287,8 @@
       "status": "A",
       "path": "docs/operations/GATEWAY-ARTIFACT.md",
       "mode": "100644",
-      "blob": "c5572cd37f18f122aa3207ee3e5c14742096c769",
-      "sha256": "17c45b1b827227dea41bf7b502ddbd0e9b3ba8e39231d901d0a093e09b46496f",
+      "blob": "e25fe96fd93944d3964e05ed2871aa013f31dc40",
+      "sha256": "7062a73aac81b3f9a9cf2d58e73f53b23fd7d074ddede32dcf591fdf40a342df",
       "byteCount": 10558
     },
     {
@@ -303,8 +303,8 @@
       "status": "A",
       "path": "docs/operations/gateway-artifact.v1.json",
       "mode": "100644",
-      "blob": "829d5f102bf648b090e05cebcb8e857ee452b30d",
-      "sha256": "515da0377a7a37e318190e40a59ff830e4d95c195cdf857e61641bdd8c11cf6f",
+      "blob": "bb7fd9aa6b8b9a3ccfc6f41c7070ec83b897af9e",
+      "sha256": "e571b98a2fe86b5e786ba595d3f87587ac47f1b4d6d1fa7b5c15a769c9544cef",
       "byteCount": 2409
     },
     {
@@ -335,8 +335,8 @@
       "status": "M",
       "path": "package.json",
       "mode": "100644",
-      "blob": "8240b607ea3dc7abba7b54f54803690c24c051f8",
-      "sha256": "4f63ad92e87fa0733901bb6c2940549ad6954dc237ec069e88887f47a7f8787b",
+      "blob": "5d6c038796193fdd653b737abb2d4564d1a9d528",
+      "sha256": "679e31dc3c7090e5c100e6d034c8e675774e64da4403fa08d66e8784317f5560",
       "byteCount": 2740
     },
     {
@@ -367,16 +367,16 @@
       "status": "A",
       "path": "scripts/check-built-container.mjs",
       "mode": "100644",
-      "blob": "92c60507fa1f38337dcc8ee2aab4b0a3b1040d3f",
-      "sha256": "86dea5ca21a205eb2e1ecb02bbc57b2953cb8f33b9f5ba682225dd9e82874d4f",
-      "byteCount": 3718
+      "blob": "fea36794a2351851f0c402bc88eae4279f4f26cf",
+      "sha256": "c1635b4b1345ab7c5fd3d53768facdcd1404daf906b56492e34eac1a86d2b4e9",
+      "byteCount": 3841
     },
     {
       "status": "A",
       "path": "scripts/check-container-contract.mjs",
       "mode": "100644",
-      "blob": "221e4f53c79100ce7021885909983a4eb8399f77",
-      "sha256": "e556657bd175df59e9d3da2a2d491f0e4221a5c34c95a5b62d17ff81368493b7",
+      "blob": "f57026406b730313b6f0139e430e9b995c878616",
+      "sha256": "3bbe86ea98644d57cbaae377534ab230070977d87abf1dc0a088e8f6c89cfda1",
       "byteCount": 9385
     },
     {
@@ -399,16 +399,16 @@
       "status": "A",
       "path": "scripts/check-gateway-image.ts",
       "mode": "100644",
-      "blob": "3f2f397b69cc06bdbc4b582f406bb7cb910b04c2",
-      "sha256": "ae8bada5a1b82a4438aaa5a4bad87a80c22c8015d13129ef208478b025548197",
+      "blob": "5c0947da4c16fd5af5ea83454c56b44d4c854129",
+      "sha256": "85dc7b09f7687a2266a939c7d3e6e820c719f92cc6eb508137d404ade8a9e628",
       "byteCount": 8546
     },
     {
       "status": "M",
       "path": "scripts/check-release-readiness.ts",
       "mode": "100644",
-      "blob": "ecce3c8292726f8b9e7b706f285e2efbcd8f2f71",
-      "sha256": "64a473100fee7523763061f92296880c1da748733195992ba9720b8f0fb83d52",
+      "blob": "efbcc8e85040bfb0feb04ef66c3b5cfb4bb47b3f",
+      "sha256": "d2eea95d3ab45773d156d78eee0bbd71ba43712059def104b5cb00e68b06f7d9",
       "byteCount": 21622
     },
     {
@@ -1079,8 +1079,8 @@
       "status": "A",
       "path": "tests/container-contract.test.ts",
       "mode": "100644",
-      "blob": "6d7279a92a87d49dc27e5962f759b726ebf8cad1",
-      "sha256": "207a4934faeb9f7e4c19d29d8b445e61465238a7ab946487426ebc3b2782f86a",
+      "blob": "34239cac0d95cd25a53618e7b459dae746c5199c",
+      "sha256": "26a02b1a90f2a2918377ec042c988f08fa983295a1e0f3b43490db6dd3e140ed",
       "byteCount": 3372
     },
     {

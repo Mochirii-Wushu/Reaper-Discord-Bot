@@ -43,7 +43,7 @@ const fileProbe = spawnSync(
     "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=16m",
     "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
     "--entrypoint", "/nodejs/bin/node", image, "-e",
-    "const fs=require('node:fs');const path=require('node:path');const top=fs.readdirSync('/opt/reaper').sort();let native=false;function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,e.name);if(e.isDirectory())walk(p);else if(e.name.endsWith('.node'))native=true;}}walk('/opt/reaper');if(process.version!=='v22.23.3'||process.getuid()!==65532||native||fs.existsSync('/bin/sh')||fs.existsSync('/usr/local/bin/npm')||JSON.stringify(top)!==JSON.stringify(['dist','node_modules','package.json']))process.exit(2);",
+    "const fs=require('node:fs');const path=require('node:path');const top=fs.readdirSync('/opt/reaper').sort();let native=false;function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,e.name);if(e.isDirectory())walk(p);else if(e.name.endsWith('.node'))native=true;}}walk('/opt/reaper');if(process.version!=='v22.23.4'||process.versions.undici!=='6.29.1'||process.versions.openssl!=='3.5.9'||require('undici/package.json').version!=='6.29.1'||process.getuid()!==65532||native||fs.existsSync('/bin/sh')||fs.existsSync('/usr/local/bin/npm')||JSON.stringify(top)!==JSON.stringify(['dist','node_modules','package.json']))process.exit(2);",
   ],
   { encoding: "utf8" },
 );
