@@ -22,7 +22,7 @@ describe("Gateway OCI artifact", () => {
     expect(contract.build).toMatchObject({
       builderDistroless: true,
       builderShellIncluded: false,
-      runtimeNodeVersion: "22.23.3",
+      runtimeNodeVersion: "22.23.4",
       runtimeDistroless: true,
       runtimeShellIncluded: false,
       runtimePackageManagerIncluded: false,

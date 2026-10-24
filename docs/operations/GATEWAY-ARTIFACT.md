@@ -17,7 +17,7 @@ forwarder.
 
 `Dockerfile` uses exact digests for its Dockerfile frontend, the
 multi-architecture distroless Bun 1.3.14 builder, and the nonroot distroless Node.js
-22.23.3 Debian 13 runtime. The build installs the committed lockfile twice: once with
+22.23.4 Debian 13 runtime. The build installs the committed lockfile twice: once with
 development dependencies for TypeScript compilation and once with production
 dependencies only for the runtime. Lifecycle scripts are disabled, and every
 builder command uses Bun's absolute executable with JSON-form `RUN`; no build
