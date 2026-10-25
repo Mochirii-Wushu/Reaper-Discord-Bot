@@ -1,7 +1,6 @@
 # Reaper
 
-Private Reaper runtime repository for Mōchirīī Discord automation and the
-Gateway-only member welcome worker.
+Reaper is Mōchirīī's Discord automation runtime and persistent Gateway worker.
 
 Website remains the current production writer while this repository establishes
 the terminal source boundary for six Edge Functions. No cutover, provider
@@ -15,9 +14,15 @@ Reaper also retains guild command registration, contract tests, a rollback
 Gallery Gateway reference, and the separate welcome-DM Gateway worker.
 
 The disabled-by-default [minimal community notices](docs/minimal-community-notices.md)
-candidate adds a verified public welcome route and consumes Website's existing
-monthly member selection. It does not activate either route or revive legacy
-polls; publication and hosted acceptance remain separately gated.
+candidate adds public welcomes/goodbyes and announcements of Website's existing
+monthly selection. Both routes require verified destinations before activation;
+this source does not establish live channel access, delivery or bot readiness.
+
+Website owns monthly selection, its public winner snapshot and authoritative
+UTC+8 event/stream schedules. Reaper consumes those contracts and owns its
+delivery receipts; it never redraws a winner or changes the selector schedule.
+Twitch work owns streaming content and artwork. This candidate changes no
+Website/Twitch source, banner, event series or existing hosted function.
 
 ## Edge Function Source Ownership
 
@@ -47,12 +52,13 @@ Website-shared interfaces/adapters and records uncommitted Website overrides as
 deferred inputs rather than importing them. See
 [`docs/reaper-edge-source-ownership.md`](docs/reaper-edge-source-ownership.md).
 
-## Welcome DM Gateway Worker
+## Legacy Welcome DM Gateway Worker
 
-New-member welcome DMs require a persistent Discord Gateway connection because
-Discord member-join notifications are Gateway events, not Interactions webhooks.
-Supabase Edge Functions and Vercel Functions are not the right runtime for that
-long-running connection.
+Member-join notifications are Gateway events, distinct from Interactions
+webhooks. The existing architecture keeps that persistent connection in the
+approved Droplet worker and preserves the hosted Interactions owner. The legacy
+DM route below is unchanged; the new public member route requires DMs disabled
+and is never a fallback for a failed DM.
 
 Enable Discord Developer Portal > Reaper > Bot > Privileged Gateway Intents >
 Server Members Intent before deploying this worker.
@@ -136,19 +142,29 @@ packet succeeds. No source check or local flag changes provider state.
 2. Create `.env.local` from `.env.example` and fill secret values locally or in
    the bot host secret manager. Never commit real values.
 
-3. Register the guild command:
+3. Only a separately approved command-registration task may run the legacy
+   guild registration command. It is unnecessary for minimal member notices or
+   Website-selected spotlight announcements:
 
    ```sh
    bun run register:guild
    ```
 
-4. Run the Gateway worker when an approved persistent host is available:
+4. For separately approved local development only:
 
    ```sh
    bun run dev
    ```
 
-## Required Secrets
+   Production uses the reviewed immutable image and host supervisor in the
+   deployment runbook. The workstation is not a production runtime dependency.
+
+## Runtime Configuration Names
+
+Names below include non-secret configuration as well as secrets. Supply real
+values only through their approved runtime boundary. The minimal routes' flags,
+channel configuration and anonymous winner-reader contract are documented in
+[minimal community notices](docs/minimal-community-notices.md).
 
 - `DISCORD_BOT_TOKEN`
 - `DISCORD_APPLICATION_ID`
@@ -214,19 +230,24 @@ private supervisor probe uses `bun run health:check -- <absolute-path>`.
 The immutable-artifact, SBOM, provenance, restart, session-resume, rollback, and
 workstation-off gates are defined in
 [`contracts/gateway-release.v1.json`](contracts/gateway-release.v1.json) and
-[`docs/runtime-operations.md`](docs/runtime-operations.md). This repository
-still contains no deployment workflow and no runtime has been activated.
+[`docs/runtime-operations.md`](docs/runtime-operations.md). These source contracts
+do not certify the installed image, service state or activation of any live host.
+The manual image publisher is separate from host deployment and activation.
 
-## Production Runtime
+## Runtime Ownership and Activation
 
 - Primary slash-command runtime: Supabase Edge Function
   `reaper-discord-interactions`.
 - Welcome DM runtime: persistent Gateway worker from this repo.
+- Public welcomes/goodbyes and Website-selected monthly announcements: the same
+  Gateway, with both new route flags defaulting to false. Their source and CI
+  results are not live deployment evidence.
 - Discord Developer Portal Interactions Endpoint URL remains provider-managed
   and is not recorded in this repository.
-- Register guild commands before endpoint verification checks.
-- Keep Discord, Supabase, and Instagram secrets in Supabase secrets or local
-  ignored files only.
+- Command registration is a separate approved legacy/Gallery operation; it is
+  not a prerequisite for the minimal notice routes.
+- Keep credentials in each owner's approved runtime secret boundary. Ignored
+  local development/recovery files are not production runtime dependencies.
 - Pending-verification forwarding uses a private persistent host spool and one
   sequential drainer. It retains at most 256 records of at most 32 KiB each.
   Admission, corruption, or storage failure raises a readiness fault; no event
@@ -241,7 +262,8 @@ still contains no deployment workflow and no runtime has been activated.
 - Only an exact completed receipt removes work. Pending work retains its UUID
   and bounded backoff across restarts. Blocked/rejected work remains quarantined
   and holds later queued events for operator reconciliation; there is no timed
-  takeover or restart reset. Welcome DMs remain independently enabled.
+  takeover or restart reset. Legacy welcome DMs have their own flag; the public
+  member route requires that flag to be false.
 
 The concrete local hosting candidate and remaining publication/activation gates
 are in [`docs/operations/GATEWAY-DEPLOYMENT.md`](docs/operations/GATEWAY-DEPLOYMENT.md).

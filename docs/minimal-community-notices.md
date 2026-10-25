@@ -1,6 +1,7 @@
 # Minimal community notices
 
-Status: local source candidate; neither new route is activated.
+Status: source-review candidate; both new route flags default to disabled.
+Actual deployment, channel access and activation require separate live evidence.
 
 This Gateway addition has two routes: public welcomes and goodbyes in one
 verified guild text channel, and a monthly announcement of the member already
@@ -93,6 +94,12 @@ Run `bun run check` and `git diff --check`, with the exact pinned toolchain and
 unchanged frozen dependencies. Preserve all prior action receipts and consumed
 publication/host allowances. This source does not renew any old execution plan.
 
+Website alone owns the monthly choice. The Gateway consumes only the bounded
+public name/month DTO; legacy Edge source contracts do not grant this route
+candidate-table access. Twitch owns streaming content/artwork, while Website
+retains published schedule and public asset authority. These routes change none
+of those owners' source or schedules.
+
 Before live use, separately approve source publication, immutable artifact
 delivery, any required host configuration, exact verified destinations and
 bounded test sends. Verify the current host image, health, feature flags and
@@ -104,3 +111,18 @@ necessary reconnect/restart/reboot recovery and workstation independence. Preser
 all unrelated functions and services. Rollback disables/stops the candidate,
 retains its private journal and restores only an explicitly reviewed prior
 artifact/configuration. No automatic rollback may repeat an uncertain send.
+
+## Test-message cleanup boundary
+
+Local and source-CI tests create no Discord messages. That statement does not
+certify the whole server's message history. Any later cleanup must identify only
+authorized test messages by their actual channel/message receipts and evidence.
+Do not infer test status from normal member activity, create live tests to justify
+cleanup, add an automatic purge, or delete durable notice receipts to permit a
+replay. Permanent message deletion requires exact action-time user confirmation
+and verification of the permitted result.
+
+Protocol references: [Discord Gateway events](https://docs.discord.com/developers/events/gateway-events)
+and [message creation](https://docs.discord.com/developers/resources/message#create-message).
+Use the repository's pinned SDK, lockfile and runtime contracts for the installed
+implementation; current unversioned examples do not authorize toolchain changes.

@@ -9,7 +9,7 @@
   "framing": "rows ASCII-sorted by path; each row is status + NUL + path + NUL + mode + NUL + Git blob + NUL + lowercase SHA256(blob bytes) + LF",
   "fileCount": 156,
   "byteCount": 24158,
-  "sha256": "68e6523aea2d3394a906c9611a425a92d69f112161c9d7e3af5f97a6280578f5",
+  "sha256": "e064003a1c13a3bba4cd715c46eefaec63e8ef59746ce5cefde580f5e62a0023",
   "entries": [
     {
       "status": "A",
@@ -63,9 +63,9 @@
       "status": "M",
       "path": "AGENTS.md",
       "mode": "100644",
-      "blob": "66ad5349166c9121478c8dd8e4640e501b37a0ef",
-      "sha256": "c061ccd10a541246726a4e346b43dd350510ae7f2db08c1c31e50b2a7a1b4c57",
-      "byteCount": 5721
+      "blob": "3862e1f9751c8d97228eeddda6d5256c42ecfba0",
+      "sha256": "3d4530f285d6a3d09be71d5aeac0bd00980538001875937c8124a7fbcf7c34a0",
+      "byteCount": 6256
     },
     {
       "status": "A",
@@ -79,9 +79,9 @@
       "status": "M",
       "path": "README.md",
       "mode": "100644",
-      "blob": "3255f556efd91197b4cdab2d3e0844430ea8b7a1",
-      "sha256": "f74ceab5b8ea2d63b6990ecd0af8429c1607dbd07953ae63c645a8daa88bab44",
-      "byteCount": 12263
+      "blob": "90c9527c653daa7b8361c44e9cffd428fd389f41",
+      "sha256": "cef774e545c93aefec75b1ce909a213542767a751671471ff2e7c8f63a7ecfc5",
+      "byteCount": 13815
     },
     {
       "status": "M",
@@ -287,25 +287,25 @@
       "status": "A",
       "path": "docs/minimal-community-notices.md",
       "mode": "100644",
-      "blob": "7b74eaed9d6987c9b283a0f719a02d20591b9581",
-      "sha256": "5c39b7793dcd031efb0f42a4bb7e04fd2fa970bc71a31736b1f18011a4d24326",
-      "byteCount": 6554
+      "blob": "16f96718cd8f3f72eeb873b2685ed127631f3ca4",
+      "sha256": "097b87ddbe77de8a2cf57b24c061e32926adaa234b77338da7659d1ca228c528",
+      "byteCount": 7916
     },
     {
       "status": "A",
       "path": "docs/operations/GATEWAY-ARTIFACT.md",
       "mode": "100644",
-      "blob": "e25fe96fd93944d3964e05ed2871aa013f31dc40",
-      "sha256": "7062a73aac81b3f9a9cf2d58e73f53b23fd7d074ddede32dcf591fdf40a342df",
-      "byteCount": 10558
+      "blob": "d86644dcf9d715a52f303169b34244ab0babecfb",
+      "sha256": "999701a87ec488f90a95fd65930af69c379c6bd863916ff022ac26b2abb0824f",
+      "byteCount": 11102
     },
     {
       "status": "A",
       "path": "docs/operations/GATEWAY-DEPLOYMENT.md",
       "mode": "100644",
-      "blob": "f55f874742195471dd4c0d9b0ccb64becae80709",
-      "sha256": "bfc176e91aef67c8c4d665a1982f452e3d5b48247fbb19055d25f2ba64dd61a6",
-      "byteCount": 12509
+      "blob": "7fcb472dd34c956c2601439a32af46e598699a17",
+      "sha256": "0df88b6ad892204029a6c7fb7b3f52340c6a006a91a3a7daf42cc23d717a5eaa",
+      "byteCount": 13876
     },
     {
       "status": "A",
@@ -327,9 +327,9 @@
       "status": "M",
       "path": "docs/runtime-operations.md",
       "mode": "100644",
-      "blob": "2bcfa7fc7f2d7420ec8a002ed0dbd11e46e9ea74",
-      "sha256": "194e82128ec26e04f9db696eeead7e60bc8699876fc088a987895489780893ee",
-      "byteCount": 8008
+      "blob": "1d229571ea9e04e511fd94eb1dfb0fa230462801",
+      "sha256": "f0feeabd337df615d3f2fc6119ecdcadeb6115508c60fc3d076ef579c32e8194",
+      "byteCount": 8241
     },
     {
       "status": "D",

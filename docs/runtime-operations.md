@@ -2,6 +2,10 @@
 
 Status: `SOURCE_ONLY_NOT_DEPLOYED`.
 
+This is a source-contract status, not a live host readback. Source validation
+does not establish whether an existing Droplet process is online or which image
+and flags it currently uses. Record verified deployment facts separately.
+
 This runbook defines the source contract and locally prepared hosting template.
 It does not create infrastructure, configure a provider, publish an image,
 register a command, or send a message. See

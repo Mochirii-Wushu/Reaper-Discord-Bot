@@ -10,8 +10,10 @@ sends a Discord message.
 
 The Website repository remains the production owner of slash-command Edge
 Functions. This image contains only the Reaper Gateway process already owned by
-this repository: welcome DMs and the default-disabled pending-verification
-forwarder.
+this repository: legacy welcome DMs, the default-disabled pending-verification
+forwarder and the disabled minimal public-member/monthly-snapshot consumers.
+The latter use Website's existing public reader, not a new selector or legacy
+poll. Their activation remains separate from source or image publication.
 
 ## Reproducible build contract
 
@@ -111,7 +113,9 @@ The manual-only workflow `.github/workflows/gateway-image.yml` prepares and
 publishes only `ghcr.io/mochirii-wushu/reaper-discord-bot` for `linux/amd64`.
 This exact registry dependency is a necessary source-origin exception requiring
 the owner's explicit approval. Existing pull-request CI remains read-only. The
-workflow is source-only and has not been dispatched or proven on hosted CI.
+workflow's capabilities are not a record of live publication. Preserve actual
+historical runs and receipts separately; a successful source-CI image build is
+not a published, accepted release or permission for another manual run.
 
 Before dispatch, approve the exact source commit/tree and the narrow short-lived
 `GITHUB_TOKEN` packages/attestations/OIDC publication exception. It authorizes
@@ -164,8 +168,11 @@ and [GitHub attestation verification](https://cli.github.com/manual/gh_attestati
 
 ## Deployment and cost gate
 
-A DigitalOcean host candidate is documented separately; no host exists or is
-certified by this source packet. Before deployment, record and approve:
+A DigitalOcean host template is documented separately. This source packet does
+not certify the existence, readiness or installed image of an actual host.
+For an existing approved host, revalidate its state without provisioning a
+replacement or resetting prior action allowances. Before deployment, record
+and approve:
 
 1. host and region, recurring cost, quota, and ownership;
 2. exact immutable image digest and verified attestations;
