@@ -61,8 +61,12 @@
 - Use only the `Guilds` and `GuildMembers` intents. Do not request
   Administrator, Message Content, Presences, or role-management permission for
   the welcome worker.
-- Welcome messages are private DM-only. Record only a redacted failure and never
-  post a public fallback.
+- The legacy welcome route is private DM-only and has no public fallback. The
+  separately approved community route may welcome new members and post goodbyes only in its
+  explicitly configured and verified guild text channel, with DMs disabled.
+  Both new community routes default to disabled; route failure never selects
+  another channel or delivery mode. Preserve durable notice receipts and hold
+  uncertain sends rather than replaying them.
 - Pending-verification forwarding remains disabled by default, bounded, and
   fail-closed. It does not authorize direct Discord role mutation.
 - Use guild-scoped command registration first. Global command registration

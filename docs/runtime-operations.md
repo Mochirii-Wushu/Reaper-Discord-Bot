@@ -53,11 +53,14 @@ directory identity. It reads metadata only, never lists or hashes private files.
 Available space must be greater than 1 GiB and available inodes greater than
 1,024 on each filesystem; unknown, inconsistent, read-only or insufficient
 capacity reports unhealthy through the existing heartbeat. These are operational
-reserves, not native quotas or admission guarantees. Normal known application
-file slots have conservative logical ceilings of 25,243,736 bytes/264 inodes for
-the Gateway and 16,780,323 bytes/five inodes for operations, excluding filesystem
+reserves, not native quotas or admission guarantees. The existing forwarding and
+operations components' normal known file slots have conservative logical ceilings
+of 25,243,736 bytes/264 inodes and 16,780,323 bytes/five inodes, excluding filesystem
 metadata, block rounding and unrelated host storage. The reserves allow over
-25 times their combined logical bytes and over three times their inode slots.
+25 times those combined logical bytes and over three times those inode slots.
+The disabled community-notice candidate adds its own bounded journal, described
+in [minimal community notices](minimal-community-notices.md); it is not covered
+by those component totals or the forwarding checkpoint.
 Backup/receipt reconciliation still runs when capacity is unhealthy so retained
 work is preserved. Abrupt termination can leave UUID-named atomic temporaries;
 repeated crashes have no finite lifetime disk bound. Alert response and operator

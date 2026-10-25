@@ -14,6 +14,11 @@ ${SUPABASE_FUNCTIONS_URL}/reaper-discord-interactions
 Reaper also retains guild command registration, contract tests, a rollback
 Gallery Gateway reference, and the separate welcome-DM Gateway worker.
 
+The disabled-by-default [minimal community notices](docs/minimal-community-notices.md)
+candidate adds a verified public welcome route and consumes Website's existing
+monthly member selection. It does not activate either route or revive legacy
+polls; publication and hosted acceptance remain separately gated.
+
 ## Edge Function Source Ownership
 
 Reaper is the terminal implementation, test, scoped-deployment, and operations
