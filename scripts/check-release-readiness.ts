@@ -289,7 +289,7 @@ const submitSource = read("src/submit.ts");
 const environmentSource = read(".env.example");
 const registrationSource = read("src/register-commands.ts");
 const expectedIndexSha256 =
-  "f5ed7c3163a5826aaac2a4676d1b2804b998cb571f9fc5f9aacc652a613a4b4a";
+  "c6ac1506141387bcd53005e10624eaf3aabf77c6af31e2b5023137d29f4b8971";
 const expectedRegistrationSha256 =
   "a4d92870238c746bc4c6bae01acc2be1c95db6984a9f1db1a7cd7e75b3cabc1b";
 

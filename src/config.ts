@@ -39,6 +39,50 @@ export interface GalleryConfig extends ReaperConfig {
   discordGalleryAuthorizationContext: DiscordGalleryAuthorizationContext;
 }
 
+export interface CommunityNoticeConfig {
+  guildId: string;
+  welcomeChannelId: string | null;
+  spotlightChannelId: string | null;
+  spotlightUrl: string | null;
+  apiOrigin: string | null;
+  statePath: string;
+}
+
+export function loadCommunityNoticeConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): CommunityNoticeConfig {
+  const welcome = exactDefaultFalseBoolean(env, "REAPER_MEMBER_NOTICES_ENABLED");
+  const spotlight = exactDefaultFalseBoolean(env, "REAPER_SPOTLIGHT_ANNOUNCEMENT_ENABLED");
+  const disabled = { guildId: "", welcomeChannelId: null, spotlightChannelId: null,
+    spotlightUrl: null, apiOrigin: null, statePath: "" };
+  if (!welcome && !spotlight) return disabled;
+  const guildId = canonicalDiscordIdentifier(env.DISCORD_GUILD_ID);
+  const welcomeChannelId = welcome ? canonicalDiscordIdentifier(env.REAPER_MEMBER_NOTICE_CHANNEL_ID) : null;
+  const spotlightChannelId = spotlight ? canonicalDiscordIdentifier(env.REAPER_SPOTLIGHT_CHANNEL_ID) : null;
+  if (!guildId || (welcome && !welcomeChannelId) || (spotlight && !spotlightChannelId)) {
+    throw new Error("Community notice routing is invalid.");
+  }
+  if (welcome && optionalBoolean(env, "WELCOME_DM_ENABLED", true)) {
+    throw new Error("Public welcome and welcome DM routes cannot both be enabled.");
+  }
+  const statePath = requireEnv(env, "REAPER_NOTICE_STATE_PATH");
+  const apiOrigin = requireEnv(env, "DISCORD_API_ORIGIN");
+  const api = new URL(apiOrigin);
+  if (api.protocol !== "https:" || api.origin !== apiOrigin || api.username || api.password || api.port) {
+    throw new Error("Community notice API origin is invalid.");
+  }
+  let spotlightUrl: string | null = null;
+  if (spotlight) {
+    spotlightUrl = requireEnv(env, "REAPER_SPOTLIGHT_WINNER_URL");
+    const url = new URL(spotlightUrl);
+    if (url.protocol !== "https:" || url.username || url.password || url.port || url.search || url.hash ||
+      spotlightUrl !== url.href || url.pathname !== "/functions/v1/get-current-spotlight-winner") {
+      throw new Error("Community spotlight reader URL is invalid.");
+    }
+  }
+  return { guildId, welcomeChannelId, spotlightChannelId, spotlightUrl, apiOrigin, statePath };
+}
+
 function requireEnv(env: NodeJS.ProcessEnv, key: string): string {
   const value = String(env[key] || "").trim();
   if (!value) {

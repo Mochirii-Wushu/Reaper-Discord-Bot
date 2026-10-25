@@ -8,6 +8,10 @@
   `send-member-spotlight-poll`, and `publish-member-spotlight-winner`.
 - Reaper also owns the persistent Gateway welcome/member-sync worker, Discord
   command registration contract, tests, and rollback reference.
+- Reaper is Mōchirīī's Discord automation runtime. Website owns monthly member
+  selection, its public snapshot reader, shared data and authoritative UTC+8
+  schedules; Twitch work owns streaming content and artwork. Reaper consumes
+  those approved contracts without taking over their source or selection.
 - Website retains migrations, tables, RLS, grants, shared schema, schedules,
   generic Supabase configuration, `submit-discord-gallery-image`, shared
   identity/authorization, and the current production writer until a separately
@@ -61,8 +65,15 @@
 - Use only the `Guilds` and `GuildMembers` intents. Do not request
   Administrator, Message Content, Presences, or role-management permission for
   the welcome worker.
-- Welcome messages are private DM-only. Record only a redacted failure and never
-  post a public fallback.
+- The legacy welcome route is private DM-only and has no public fallback. The
+  separately approved community route may welcome new members and post goodbyes only in its
+  explicitly configured and verified guild text channel, with DMs disabled.
+  Both new community routes default to disabled; route failure never selects
+  another channel or delivery mode. Preserve durable notice receipts and hold
+  uncertain sends rather than replaying them.
+- Monthly Gateway announcements consume only Website's current-month public
+  winner DTO. Never select, redraw, read candidate records, revive legacy polls,
+  or change the selector schedule as part of announcement delivery.
 - Pending-verification forwarding remains disabled by default, bounded, and
   fail-closed. It does not authorize direct Discord role mutation.
 - Use guild-scoped command registration first. Global command registration

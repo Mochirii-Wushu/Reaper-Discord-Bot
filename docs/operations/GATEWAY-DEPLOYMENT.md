@@ -4,6 +4,11 @@ Status: `SOURCE_ONLY_NOT_DEPLOYED`. No image publication, paid resource,
 credential provisioning, Discord connection, welcome send, or forwarding call
 is authorized by this document.
 
+The status describes this source contract, not the current state of an existing
+host. Reuse an already approved resource after readback rather than provisioning
+again from this template. Historical completed stages and consumed attempts stay
+preserved; this document never renews them.
+
 ## Ownership and order
 
 This repository owns the persistent Gateway. Website remains the production
@@ -12,6 +17,13 @@ authorization. The prepared forwarder requires the separately reviewed Website
 UUID receipt and shared containment-fence migration/runtime. Do not deploy the
 older Edge tree from this repository or cut over function ownership as part of
 Gateway hosting.
+
+The legacy forwarding sequence below applies only when that feature is approved.
+The [minimal member/spotlight routes](../minimal-community-notices.md) instead
+consume Website's existing public winner snapshot and use their own persistent
+notice receipts. They require no selector, migration, schedule or command
+registration change. Existing production functions and disabled unrelated
+Gateway features retain their owners and configuration.
 
 1. Review both exact source trees, tests, compatible receipt protocol, and
    migration/rollback order.
@@ -90,7 +102,7 @@ approved protected editor/secret delivery channel; never paste tokens into chat
 or command arguments. Only Docker reads the raw file. Docker administrative
 access can inspect container environment and is therefore secret-level access.
 
-Runtime names required for this worker are:
+The legacy DM-plus-forwarder activation example uses:
 
 ```text
 DISCORD_BOT_TOKEN
@@ -107,6 +119,13 @@ rollback-disabled. Activation requires explicit runtime `true` values and an
 approved test recipient. The image requires neither a Supabase service-role key
 nor Discord role-management/Administrator permissions. Keep the Developer
 Portal Server Members Intent enabled only for the approved bot/application.
+
+The example is not the minimal-route activation configuration. Public member
+notices require `WELCOME_DM_ENABLED=false`; the new member and spotlight flags
+remain false until separately approved. Configure only their exact verified
+channels, canonical public reader and private persistent journal as documented
+in the minimal-route guide. Do not enable forwarding or Gallery merely to use
+these notices.
 
 Create `/var/lib/mochirii-reaper/gateway` as an existing real directory owned
 65532:65532 with mode0700. Its bind mount supplies
@@ -186,7 +205,8 @@ No private age identity or recovery folder is installed on the host.
 
 | Capability | Runtime and authorization |
 | --- | --- |
-| New-member welcome | Hosted Gateway; private DM only, mentions disabled, no public fallback; controlled recipient approval first. |
+| Legacy welcome DM | Optional Gateway route; mentions disabled, no public fallback; separate activation and controlled recipient approval. |
+| Public welcome/goodbye and monthly spotlight | Same Gateway; disabled by default, exact channel/access verification and durable receipts; Website alone selects the monthly member. See the minimal-route guide. |
 | Join/role-change forwarding | Hosted Gateway spool to compatible Website writer; UUID dedupe and shared fence; blocked work requires reconciliation. |
 | Slash commands, schedule advancement, scheduled reminders/polls | Existing hosted Website-owned functions/database schedules; Gateway deployment must preserve their source and runtime ownership. |
 | Role/rank/moderation apply operations | Hosted execution with existing moderator/owner confirmation; hosting does not authorize automatic privileged decisions. |
