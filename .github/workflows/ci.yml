@@ -70,18 +70,35 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          stage=contract
+          trap 'status=$?; printf "Converter preflight failed: phase=%s status=%s\n" "$stage" "$status" >&2; exit "$status"' ERR
           SKOPEO_IMAGE="$(node -p "require('./contracts/gateway-image-publication.v1.json').skopeoImage")"
+          stage=pull
           docker pull --platform linux/amd64 "$SKOPEO_IMAGE"
+          stage=converter-platform
           test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$SKOPEO_IMAGE")" = linux/amd64
+          stage=scratch
           conversion="$(mktemp -d "$RUNNER_TEMP/reaper-converter.XXXXXXXX")"
           mkdir "$conversion/input" "$conversion/oci" "$conversion/docker" "$conversion/tmp"
           original_image_id="$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:ci)"
+          stage=save-worker
           docker save --output "$conversion/input/gateway.tar" mochirii-reaper-gateway:ci
           converter_args=(--rm --pull never --user "$(id -u):$(id -g)" --network none --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$conversion/tmp:/var/tmp")
-          docker run "${converter_args[@]}" "$SKOPEO_IMAGE" --version | grep -Fx 'skopeo version 1.22.3'
+          stage=version-command
+          docker run "${converter_args[@]}" "$SKOPEO_IMAGE" --version | head -c257 > "$conversion/version.txt"
+          stage=version-evidence
+          node -e 'const fs=require("node:fs");const file=process.argv[1];if(fs.statSync(file).size>256)throw Error("VERSION_SIZE");const bytes=fs.readFileSync(file);if(bytes.length>256)throw Error("VERSION_SIZE");const version=new TextDecoder("utf-8",{fatal:true}).decode(bytes);console.log("Converter version evidence: "+JSON.stringify(version));' "$conversion/version.txt"
+          stage=version-match
+          grep -Fx 'skopeo version 1.22.3' "$conversion/version.txt"
+          stage=docker-to-oci
           docker run "${converter_args[@]}" --volume "$conversion/input:/input:ro" --volume "$conversion/oci:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci
+          stage=oci-to-docker
           docker run "${converter_args[@]}" --volume "$conversion/oci:/input:ro" --volume "$conversion/docker:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted
+          stage=load-worker
           docker load --input "$conversion/docker/gateway.tar"
+          stage=config-identity
           test "$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)" = "$original_image_id"
+          stage=worker-platform
           test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' mochirii-reaper-gateway:converted)" = linux/amd64
+          stage=offline-runtime
           REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container

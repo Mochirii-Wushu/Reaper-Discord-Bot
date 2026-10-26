@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, truncateSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -701,7 +702,8 @@ describe("mandatory offline converter CI", () => {
     expect(run).toContain('docker pull --platform linux/amd64 "$SKOPEO_IMAGE"');
     expect(run.indexOf(assignment)).toBeLessThan(run.indexOf("docker pull "));
     expect(run.indexOf("docker pull ")).toBeLessThan(run.indexOf("docker run "));
-    expect(run).toContain("--version | grep -Fx 'skopeo version 1.22.3'");
+    expect(run).toContain('--version | head -c257 > "$conversion/version.txt"');
+    expect(run).toContain('grep -Fx \'skopeo version 1.22.3\' "$conversion/version.txt"');
     expect(run).toContain("test \"$(docker image inspect --format '{{.Os}}/{{.Architecture}}' \"$SKOPEO_IMAGE\")\" = linux/amd64");
     expect(run).not.toMatch(/docker\s+login|\$\{\{\s*secrets\.|--authfile|--dest-authfile|--creds/iu);
   });
@@ -732,6 +734,68 @@ describe("mandatory offline converter CI", () => {
     const acceptance = 'REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container';
     expect(run).toContain(acceptance);
     expect(run.indexOf('docker load --input "$conversion/docker/gateway.tar"')).toBeLessThan(run.indexOf(acceptance));
+  });
+
+  test("reports failures using fixed stage labels and status without tracing commands or dumping environment", () => {
+    const run = conversion(ci()).run!;
+    const trap = 'trap \'status=$?; printf "Converter preflight failed: phase=%s status=%s\\n" "$stage" "$status" >&2; exit "$status"\' ERR';
+    expect(run.split("\n").filter((line) => line.startsWith("trap "))).toEqual([trap]);
+    expect([...run.matchAll(/^stage=([a-z-]+)$/gmu)].map((match) => match[1])).toEqual([
+      "contract", "pull", "converter-platform", "scratch", "save-worker", "version-command",
+      "version-evidence", "version-match", "docker-to-oci", "oci-to-docker", "load-worker",
+      "config-identity", "worker-platform", "offline-runtime",
+    ]);
+    expect(run).not.toMatch(/set[\t ]+-[a-zA-Z]*x|xtrace|printenv|declare[\t ]+-p|typeset[\t ]+-p|(?:^|\n)env[\t ]*(?:\n|$)|BASH_COMMAND/u);
+    rejectCi(trap, trap.replace('"$stage" "$status"', '"$BASH_COMMAND" "$status"'));
+    rejectCi(trap, "set -x\n" + trap);
+    rejectCi(trap, "printenv\n" + trap);
+  });
+
+  test("bounds version stdout before JSON-only evidence and retains the exact fixed-line version comparison", () => {
+    const run = conversion(ci()).run!;
+    const capture = 'docker run "${converter_args[@]}" "$SKOPEO_IMAGE" --version | head -c257 > "$conversion/version.txt"';
+    const evidence = run.split("\n").find((line) => line.startsWith("node -e "))!;
+    const compare = 'grep -Fx \'skopeo version 1.22.3\' "$conversion/version.txt"';
+    expect(run).toContain(capture); expect(evidence).toContain('new TextDecoder("utf-8",{fatal:true})');
+    expect(evidence).toContain("JSON.stringify(version)");
+    expect(run.indexOf(capture)).toBeLessThan(run.indexOf(evidence));
+    expect(run.indexOf(evidence)).toBeLessThan(run.indexOf(compare));
+    rejectCi("head -c257", "cat");
+    rejectCi('if(fs.statSync(file).size>256)throw Error("VERSION_SIZE");', "");
+    rejectCi('if(bytes.length>256)throw Error("VERSION_SIZE");', "");
+    rejectCi('new TextDecoder("utf-8",{fatal:true})', 'new TextDecoder("utf-8")');
+    rejectCi("JSON.stringify(version)", "version");
+    rejectCi(compare, compare.replace("grep -Fx", "grep -F"));
+  });
+
+  const versionProbe = (bytes: Buffer) => {
+    const run = conversion(ci()).run!;
+    const evidence = run.split("\n").find((line) => line.startsWith("node -e ")) || "";
+    const match = /^node -e '([^']+)' "\$conversion\/version\.txt"$/u.exec(evidence);
+    expect(match).not.toBeNull();
+    const directory = mkdtempSync(join(tmpdir(), "reaper-gateway-image-test-"));
+    fixtureRoots.add(directory);
+    const file = join(directory, "version.txt"); writeFileSync(file, bytes);
+    const result = spawnSync("node", ["-e", match![1]!, file], { encoding: "utf8", timeout: 5000, maxBuffer: 8192 });
+    expect(result.error).toBeUndefined();
+    return result;
+  };
+
+  test("the actual evidence reader JSON-escapes synthetic output and accepts the complete 256-byte UTF8 boundary", () => {
+    for (const version of ["skopeo version 1.22.3\n", "界".repeat(85) + "a", "synthetic\n::warning::plain text\r\u001b[31m\t"]) {
+      const result = versionProbe(Buffer.from(version, "utf8"));
+      expect(result.status).toBe(0); expect(result.stderr).toBe("");
+      expect(result.stdout).toBe("Converter version evidence: " + JSON.stringify(version) + "\n");
+      expect(result.stdout.slice(0, -1)).not.toContain("\n");
+      expect(result.stdout).not.toContain("\r"); expect(result.stdout).not.toContain("\u001b");
+    }
+  });
+
+  test("the actual evidence reader rejects oversized or invalid UTF8 before printing any version data", () => {
+    for (const bytes of [Buffer.alloc(257, 0x61), Buffer.from("界".repeat(86), "utf8"), Buffer.from([0xc3, 0x28])]) {
+      const result = versionProbe(bytes);
+      expect(result.status).not.toBe(0); expect(result.stdout).toBe("");
+    }
   });
 
   test("rejects removing or reordering the required conversion step", () => {
@@ -774,7 +838,7 @@ describe("mandatory offline converter CI", () => {
 
   test("rejects bypassing either conversion, identity validation or the converted-image check", () => {
     for (const fragment of [
-      "--version | grep -Fx 'skopeo version 1.22.3'",
+      'grep -Fx \'skopeo version 1.22.3\' "$conversion/version.txt"',
       "copy docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci",
       "copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted",
       "test \"$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)\" = \"$original_image_id\"",
