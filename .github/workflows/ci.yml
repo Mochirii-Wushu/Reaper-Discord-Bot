@@ -66,3 +66,46 @@ jobs:
         env:
           REAPER_CONTAINER_IMAGE: mochirii-reaper-gateway:ci
         run: bun run check:container
+      - name: Verify pinned converter without publishing
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          stage=contract
+          trap 'status=$?; printf "Converter preflight failed: phase=%s status=%s\n" "$stage" "$status" >&2; exit "$status"' ERR
+          SKOPEO_IMAGE="$(node -p "require('./contracts/gateway-image-publication.v1.json').skopeoImage")"
+          stage=pull
+          docker pull --platform linux/amd64 "$SKOPEO_IMAGE"
+          stage=converter-platform
+          test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$SKOPEO_IMAGE")" = linux/amd64
+          stage=scratch
+          conversion="$(mktemp -d "$RUNNER_TEMP/reaper-converter.XXXXXXXX")"
+          mkdir "$conversion/input" "$conversion/oci" "$conversion/docker" "$conversion/tmp"
+          original_image_id="$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:ci)"
+          stage=original-identity
+          docker image inspect --format '{{json .Config}}' mochirii-reaper-gateway:ci | head -c65537 > "$conversion/original-config.json"
+          docker image inspect --format '{{json .RootFS}}' mochirii-reaper-gateway:ci | head -c65537 > "$conversion/original-rootfs.json"
+          stage=save-worker
+          docker save --output "$conversion/input/gateway.tar" mochirii-reaper-gateway:ci
+          converter_args=(--rm --pull never --user "$(id -u):$(id -g)" --network none --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$conversion/tmp:/var/tmp")
+          stage=version-command
+          docker run "${converter_args[@]}" "$SKOPEO_IMAGE" --version | head -c257 > "$conversion/version.txt"
+          stage=version-evidence
+          node -e 'const fs=require("node:fs");const file=process.argv[1];if(fs.statSync(file).size>256)throw Error("VERSION_SIZE");const bytes=fs.readFileSync(file);if(bytes.length>256)throw Error("VERSION_SIZE");const version=new TextDecoder("utf-8",{fatal:true}).decode(bytes);console.log("Converter version evidence: "+JSON.stringify(version));' "$conversion/version.txt"
+          stage=version-match
+          grep -Fx 'skopeo version 1.22.3 commit: 92397d5ba399784c6e2f9f229a4244b724743dba' "$conversion/version.txt"
+          stage=docker-to-oci
+          docker run "${converter_args[@]}" --volume "$conversion/input:/input:ro" --volume "$conversion/oci:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy --format v2s2 docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci
+          stage=oci-to-docker
+          docker run "${converter_args[@]}" --volume "$conversion/oci:/input:ro" --volume "$conversion/docker:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted
+          stage=load-worker
+          docker load --input "$conversion/docker/gateway.tar"
+          stage=identity-evidence
+          docker image inspect --format '{{json .Config}}' mochirii-reaper-gateway:converted | head -c65537 > "$conversion/converted-config.json"
+          docker image inspect --format '{{json .RootFS}}' mochirii-reaper-gateway:converted | head -c65537 > "$conversion/converted-rootfs.json"
+          node -e 'const fs=require("node:fs");const {isDeepStrictEqual:equal}=require("node:util");const read=file=>{try{if(fs.statSync(file).size>65536)throw Error();const bytes=fs.readFileSync(file);if(bytes.length>65536)throw Error();const value=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));if(!value||typeof value!=="object"||Array.isArray(value))throw Error();return value;}catch{throw Error("IDENTITY_EVIDENCE_INVALID");}};const [a,b,c,d]=process.argv.slice(1).map(read);const fields=[...new Set([...Object.keys(a),...Object.keys(b)])].sort();if(fields.length>128||fields.some(k=>!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(k)))throw Error("IDENTITY_FIELD_NAMES");console.log("Converter identity evidence: "+JSON.stringify({configEqual:equal(a,b),rootfsEqual:equal(c,d),changedConfigFields:fields.filter(k=>!equal(a[k],b[k]))}));' "$conversion/original-config.json" "$conversion/converted-config.json" "$conversion/original-rootfs.json" "$conversion/converted-rootfs.json"
+          stage=config-identity
+          test "$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)" = "$original_image_id"
+          stage=worker-platform
+          test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' mochirii-reaper-gateway:converted)" = linux/amd64
+          stage=offline-runtime
+          REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container

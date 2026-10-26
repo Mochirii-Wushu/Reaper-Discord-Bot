@@ -16,8 +16,8 @@
   "artifactRetentionDays": 30,
   "bundleMaximumAgeMinutes": 60,
   "tagFormat": "sha-<commit>-run-<run-id>-attempt-<attempt>",
-  "skopeoImage": "quay.io/skopeo/stable@sha256:3378b51926bf4be02982956bbbdfddc004a81047eb3ee55b359d8bfb520ac9eb",
-  "workflowSha256": "363e5c2602699ceb2ff51a69527538d388934a97d81ddb5f405a50d4e927fa2e",
+  "skopeoImage": "quay.io/skopeo/stable:v1.22.3-immutable@sha256:c0ee1f4edca5c01cb8d5611124f92f3cc47196ecab68aee5d0f90834e00574d5",
+  "workflowSha256": "3f5c61794c6c6ce8a2f6bc64ed512cc9653bb5217918a0583716f77e9abfbeb6",
   "stepSha256": {
     "build": [
       "bc7cf75fe6d8cb3684dec051722dc0ed37afa4ec4dd2e3402ba0c61114fc7b87",

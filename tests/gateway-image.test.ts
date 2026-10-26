@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, truncateSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -346,6 +347,8 @@ type Workflow = {
 };
 const publisherPath = ".github/workflows/gateway-image.yml";
 const workflowSource = readFileSync(new URL("../" + publisherPath, import.meta.url), "utf8");
+const ciPath = ".github/workflows/ci.yml";
+const ciSource = readFileSync(new URL("../" + ciPath, import.meta.url), "utf8");
 const publicationContract = JSON.parse(readFileSync(new URL("../contracts/gateway-image-publication.v1.json", import.meta.url), "utf8"));
 const workflow = (): Workflow => Bun.YAML.parse(workflowSource) as Workflow;
 const action = (job: WorkflowJob, name: string): WorkflowStep => {
@@ -616,22 +619,349 @@ describe("exact dormant image workflow", () => {
 
 describe("publication-only workflow-set exception", () => {
   const ordinaryCi = "name: synthetic\non: push\npermissions: {contents: read}\njobs: {check: {runs-on: ubuntu-24.04, steps: [{run: bun run check}]}}\n";
-  test("accepts the exact dormant publisher with ordinary credential-free CI", () => {
-    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource, ".github/workflows/ci.yml": ordinaryCi }, publicationContract)).toEqual([]);
+  test("accepts only the actual canonical CI plus the dormant publisher, with optional ordinary CI elsewhere", () => {
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource, [ciPath]: ciSource }, publicationContract)).toEqual([]);
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource, [ciPath]: ciSource,
+      ".github/workflows/other.yml": ordinaryCi }, publicationContract)).toEqual([]);
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource,
+      [ciPath]: ciSource.replaceAll("\r\n", "\n").replaceAll("\n", "\r\n") }, publicationContract)).toEqual([]);
   });
 
   test("rejects missing, renamed, copied and additional privileged workflows", () => {
     const mutants: Record<string, string>[] = [
-      {}, { ".github/workflows/renamed.yml": workflowSource },
-      { [publisherPath]: workflowSource, ".github/workflows/copied.yml": workflowSource },
+      {}, { [ciPath]: ciSource }, { [publisherPath]: workflowSource },
+      { [ciPath]: ciSource, ".github/workflows/renamed.yml": workflowSource },
+      { [publisherPath]: workflowSource, ".github/workflows/renamed-ci.yml": ciSource },
+      { [publisherPath]: workflowSource, [ciPath]: ordinaryCi },
+      { [publisherPath]: workflowSource, [ciPath]: ciSource, ".github/workflows/copied.yml": workflowSource },
       ...["docker push registry.test/synthetic/reaper", "supabase functions deploy", "supabase db push", "vercel deploy", "echo ghcr.io"]
-        .map((run) => ({ [publisherPath]: workflowSource, ".github/workflows/other.yml": ordinaryCi + "# " + run })),
+        .map((run) => ({ [publisherPath]: workflowSource, [ciPath]: ciSource,
+          ".github/workflows/other.yml": ordinaryCi + "# " + run })),
     ];
     for (const workflows of mutants) expect(validateGatewayWorkflowSet(workflows, publicationContract).length).toBeGreaterThan(0);
   });
 
   test("a privileged workflow at the canonical name still requires exact source and contract", () => {
-    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource + "\n# unreviewed" }, publicationContract).length).toBeGreaterThan(0);
-    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource }, { ...publicationContract, publicationAuthorized: true }).length).toBeGreaterThan(0);
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource + "\n# unreviewed", [ciPath]: ciSource }, publicationContract).length).toBeGreaterThan(0);
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource, [ciPath]: ciSource },
+      { ...publicationContract, publicationAuthorized: true }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("mandatory offline converter CI", () => {
+  const ci = (): Workflow => Bun.YAML.parse(ciSource) as Workflow;
+  const conversion = (candidate: Workflow): WorkflowStep => command(candidate.jobs.validate, "converter_args=(");
+  const originalCi = ciSource.replaceAll("\r\n", "\n");
+  const converterHeader = "      - name: Verify pinned converter without publishing\n        shell: bash\n";
+  const converterStep = originalCi.slice(originalCi.indexOf(converterHeader));
+  const offlineStep = "      - name: Verify OCI worker without provider access\n        env:\n" +
+    "          REAPER_CONTAINER_IMAGE: mochirii-reaper-gateway:ci\n        run: bun run check:container\n";
+  const jobHeader = "  validate:\n    runs-on: ubuntu-24.04\n";
+  const jobEnv = "    env:\n      EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}\n";
+  const permissions = "permissions:\n  contents: read\n";
+  const acceptanceCommand = 'REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container';
+  // Observed bounded tool output; this fixture does not establish build provenance.
+  const converterVersionLine = "skopeo version 1.22.3 commit: 92397d5ba399784c6e2f9f229a4244b724743dba";
+  const versionComparison = `grep -Fx '${converterVersionLine}' "$conversion/version.txt"`;
+  const rejectCi = (from: string, to: string) => {
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource,
+      [ciPath]: originalCi }, publicationContract)).toEqual([]);
+    const offset = originalCi.indexOf(from);
+    expect(from.length).toBeGreaterThan(0);
+    expect(offset).toBeGreaterThanOrEqual(0);
+    expect(originalCi.indexOf(from, offset + from.length)).toBe(-1);
+    const candidate = originalCi.replace(from, to);
+    expect(candidate).not.toBe(originalCi);
+    expect(candidate).toBe(originalCi.slice(0, offset) + to + originalCi.slice(offset + from.length));
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource,
+      [ciPath]: candidate }, publicationContract)).toContain(
+      "The exact required CI source and offline converter gate must remain unchanged.",
+    );
+  };
+
+  test("requires the converter gate immediately after the original offline container verification", () => {
+    const candidate = ci();
+    const steps = candidate.jobs.validate.steps;
+    const step = conversion(candidate);
+    const previous = steps[steps.indexOf(step) - 1];
+    expect(step.name).toBe("Verify pinned converter without publishing");
+    expect(step.shell).toBe("bash");
+    expect(Object.keys(step).sort()).toEqual(["name", "run", "shell"]);
+    expect(previous).toEqual({ name: "Verify OCI worker without provider access",
+      env: { REAPER_CONTAINER_IMAGE: "mochirii-reaper-gateway:ci" }, run: "bun run check:container" });
+    expect(candidate.permissions).toEqual({ contents: "read" });
+    expect(candidate.jobs.validate.permissions).toBeUndefined();
+    expect(Object.keys(candidate.jobs.validate.env as object)).toEqual(["EXPECTED_SHA"]);
+    expect(step.env).toBeUndefined();
+  });
+
+  test("derives the exact candidate from the publication contract and pulls publicly before offline execution", () => {
+    const run = conversion(ci()).run!;
+    const assignment = 'SKOPEO_IMAGE="$(node -p "require(\'./contracts/gateway-image-publication.v1.json\').skopeoImage")"';
+    expect(run).toContain("set -Eeuo pipefail");
+    expect(run).toContain(assignment);
+    expect(run).not.toContain(publicationContract.skopeoImage);
+    expect(workflow().env.SKOPEO_IMAGE).toBe(publicationContract.skopeoImage);
+    expect(run).toContain('docker pull --platform linux/amd64 "$SKOPEO_IMAGE"');
+    expect(run.indexOf(assignment)).toBeLessThan(run.indexOf("docker pull "));
+    expect(run.indexOf("docker pull ")).toBeLessThan(run.indexOf("docker run "));
+    expect(run).toContain('--version | head -c257 > "$conversion/version.txt"');
+    expect(run).toContain(versionComparison);
+    expect(run).toContain("test \"$(docker image inspect --format '{{.Os}}/{{.Architecture}}' \"$SKOPEO_IMAGE\")\" = linux/amd64");
+    expect(run).not.toMatch(/docker\s+login|\$\{\{\s*secrets\.|--authfile|--dest-authfile|--creds/iu);
+  });
+
+  test("uses hardened non-root offline runs with read-only input and isolated writable conversion directories", () => {
+    const run = conversion(ci()).run!;
+    expect(run).toContain('conversion="$(mktemp -d "$RUNNER_TEMP/reaper-converter.XXXXXXXX")"');
+    expect(run).toContain('mkdir "$conversion/input" "$conversion/oci" "$conversion/docker" "$conversion/tmp"');
+    expect(run).toContain('converter_args=(--rm --pull never --user "$(id -u):$(id -g)" --network none --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$conversion/tmp:/var/tmp")');
+    expect(run.match(/docker run "\$\{converter_args\[@\]\}"/gu)).toHaveLength(3);
+    for (const fragment of [
+      '--volume "$conversion/input:/input:ro" --volume "$conversion/oci:/output"',
+      '--volume "$conversion/oci:/input:ro" --volume "$conversion/docker:/output"',
+      'copy --format v2s2 docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci',
+      'copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted',
+    ]) expect(run).toContain(fragment);
+    expect(run).not.toContain('--volume "$RUNNER_TEMP:/output"');
+    expect(run).not.toContain('--volume "$GITHUB_WORKSPACE:/output"');
+    expect(run).not.toContain("--privileged");
+  });
+
+  test("checks the converted image's identity and platform before its unchanged offline acceptance check", () => {
+    const run = conversion(ci()).run!;
+    expect(run).toContain('docker save --output "$conversion/input/gateway.tar" mochirii-reaper-gateway:ci');
+    expect(run).toContain('docker load --input "$conversion/docker/gateway.tar"');
+    expect(run).toContain("test \"$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)\" = \"$original_image_id\"");
+    expect(run).toContain("test \"$(docker image inspect --format '{{.Os}}/{{.Architecture}}' mochirii-reaper-gateway:converted)\" = linux/amd64");
+    const acceptance = 'REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container';
+    expect(run).toContain(acceptance);
+    expect(run.indexOf('docker load --input "$conversion/docker/gateway.tar"')).toBeLessThan(run.indexOf(acceptance));
+  });
+
+  test("preserves Docker metadata format without bypassing image identity, Healthcheck or runtime validation", () => {
+    const run = conversion(ci()).run!;
+    const firstCopy = "copy --format v2s2 docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci";
+    expect(run).toContain(firstCopy); expect(run.match(/copy --format v2s2/gu)).toHaveLength(1);
+    rejectCi(firstCopy, firstCopy.replace("--format v2s2 ", ""));
+    rejectCi(firstCopy, firstCopy.replace("--format v2s2", "--format oci"));
+    expect(run).toContain("stage=config-identity\ntest \"$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)\" = \"$original_image_id\"");
+    expect(run).toContain(acceptanceCommand);
+    expect(run).not.toMatch(/--(?:skip|ignore|no)-healthcheck|(?:SKIP|IGNORE|BYPASS)_[A-Z_]*HEALTH/iu);
+    const checker = readFileSync(new URL("../scripts/check-built-container.mjs", import.meta.url), "utf8");
+    expect(checker).toContain('if (JSON.stringify(config.Healthcheck?.Test) !== JSON.stringify(["CMD", "/nodejs/bin/node", "dist/healthcheck.js"]))');
+    expect(checker).toContain('errors.push("Container readiness command drifted.")');
+    expect(checker).toContain("process.exitCode = 1;");
+  });
+
+  test("reports failures using fixed stage labels and status without tracing commands or dumping environment", () => {
+    const run = conversion(ci()).run!;
+    const trap = 'trap \'status=$?; printf "Converter preflight failed: phase=%s status=%s\\n" "$stage" "$status" >&2; exit "$status"\' ERR';
+    expect(run.split("\n").filter((line) => line.startsWith("trap "))).toEqual([trap]);
+    expect([...run.matchAll(/^stage=([a-z-]+)$/gmu)].map((match) => match[1])).toEqual([
+      "contract", "pull", "converter-platform", "scratch", "original-identity", "save-worker", "version-command",
+      "version-evidence", "version-match", "docker-to-oci", "oci-to-docker", "load-worker",
+      "identity-evidence", "config-identity", "worker-platform", "offline-runtime",
+    ]);
+    expect(run).not.toMatch(/set[\t ]+-[a-zA-Z]*x|xtrace|printenv|declare[\t ]+-p|typeset[\t ]+-p|(?:^|\n)env[\t ]*(?:\n|$)|BASH_COMMAND/u);
+    rejectCi(trap, trap.replace('"$stage" "$status"', '"$BASH_COMMAND" "$status"'));
+    rejectCi(trap, "set -x\n" + trap);
+    rejectCi(trap, "printenv\n" + trap);
+  });
+
+  test("bounds version stdout before JSON-only evidence and retains the exact fixed-line version comparison", () => {
+    const run = conversion(ci()).run!;
+    const capture = 'docker run "${converter_args[@]}" "$SKOPEO_IMAGE" --version | head -c257 > "$conversion/version.txt"';
+    const evidence = run.split("\n").find((line) => line.startsWith("node -e "))!;
+    const compare = versionComparison;
+    expect(run).toContain(capture); expect(evidence).toContain('new TextDecoder("utf-8",{fatal:true})');
+    expect(evidence).toContain("JSON.stringify(version)");
+    expect(run.indexOf(capture)).toBeLessThan(run.indexOf(evidence));
+    expect(run.indexOf(evidence)).toBeLessThan(run.indexOf(compare));
+    rejectCi("head -c257", "cat");
+    rejectCi('if(fs.statSync(file).size>256)throw Error("VERSION_SIZE");', "");
+    rejectCi('if(bytes.length>256)throw Error("VERSION_SIZE");', "");
+    rejectCi(evidence, evidence.replace('new TextDecoder("utf-8",{fatal:true})', 'new TextDecoder("utf-8")'));
+    rejectCi("JSON.stringify(version)", "version");
+    rejectCi(compare, compare.replace("grep -Fx", "grep -F"));
+  });
+
+  test("rejects dropping the build suffix, changing the exact version or commit, or using a wildcard comparison", () => {
+    for (const line of [
+      "skopeo version 1.22.3",
+      converterVersionLine.replace("1.22.3", "1.22.2"),
+      converterVersionLine.replace("92397d5ba399784c6e2f9f229a4244b724743dba", "0".repeat(40)),
+    ]) rejectCi(versionComparison, `grep -Fx '${line}' "$conversion/version.txt"`);
+    rejectCi(versionComparison, 'grep -Ex \'skopeo version 1\\.22\\.3 commit: [0-9a-f]{40}\' "$conversion/version.txt"');
+  });
+
+  const versionProbe = (bytes: Buffer) => {
+    const run = conversion(ci()).run!;
+    const evidence = run.split("\n").find((line) => line.startsWith("node -e ")) || "";
+    const match = /^node -e '([^']+)' "\$conversion\/version\.txt"$/u.exec(evidence);
+    expect(match).not.toBeNull();
+    const directory = mkdtempSync(join(tmpdir(), "reaper-gateway-image-test-"));
+    fixtureRoots.add(directory);
+    const file = join(directory, "version.txt"); writeFileSync(file, bytes);
+    const result = spawnSync("node", ["-e", match![1]!, file], { encoding: "utf8", timeout: 5000, maxBuffer: 8192 });
+    expect(result.error).toBeUndefined();
+    return result;
+  };
+
+  test("the actual evidence reader JSON-escapes synthetic output and accepts the complete 256-byte UTF8 boundary", () => {
+    for (const version of [converterVersionLine + "\n", "界".repeat(85) + "a", "synthetic\n::warning::plain text\r\u001b[31m\t"]) {
+      const result = versionProbe(Buffer.from(version, "utf8"));
+      expect(result.status).toBe(0); expect(result.stderr).toBe("");
+      expect(result.stdout).toBe("Converter version evidence: " + JSON.stringify(version) + "\n");
+      expect(result.stdout.slice(0, -1)).not.toContain("\n");
+      expect(result.stdout).not.toContain("\r"); expect(result.stdout).not.toContain("\u001b");
+    }
+  });
+
+  test("the actual evidence reader rejects oversized or invalid UTF8 before printing any version data", () => {
+    for (const bytes of [Buffer.alloc(257, 0x61), Buffer.from("界".repeat(86), "utf8"), Buffer.from([0xc3, 0x28])]) {
+      const result = versionProbe(bytes);
+      expect(result.status).not.toBe(0); expect(result.stdout).toBe("");
+    }
+  });
+
+  test("captures bounded identity evidence without making the existing image-ID equality conditional", () => {
+    const run = conversion(ci()).run!;
+    const evidence = run.split("\n").find((line) => line.startsWith("node -e ") && line.includes("Converter identity evidence: "))!;
+    for (const [tag, field, filename] of [
+      ["ci", "Config", "original-config.json"], ["ci", "RootFS", "original-rootfs.json"],
+      ["converted", "Config", "converted-config.json"], ["converted", "RootFS", "converted-rootfs.json"],
+    ]) {
+      const capture = `docker image inspect --format '{{json .${field}}}' mochirii-reaper-gateway:${tag} | head -c65537 > "$conversion/${filename}"`;
+      expect(run).toContain(capture);
+      expect(run.indexOf(capture)).toBeLessThan(run.indexOf(evidence));
+      rejectCi(capture, capture.replace("head -c65537", "cat"));
+    }
+    expect(run.indexOf('"$conversion/original-rootfs.json"')).toBeLessThan(run.indexOf("stage=save-worker"));
+    expect(run.indexOf("stage=load-worker")).toBeLessThan(run.indexOf('"$conversion/converted-config.json"'));
+    const identity = "test \"$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)\" = \"$original_image_id\"";
+    expect(run.split("\n").filter((line) => line.includes("inspect --format '{{.Id}}' mochirii-reaper-gateway:converted"))).toEqual([identity]);
+    expect(run).toContain("stage=config-identity\n" + identity);
+    expect(run.indexOf(evidence)).toBeLessThan(run.indexOf(identity));
+    expect(evidence).toContain('isDeepStrictEqual:equal');
+    expect(evidence).toContain('JSON.stringify({configEqual:equal(a,b),rootfsEqual:equal(c,d),changedConfigFields:fields.filter(k=>!equal(a[k],b[k]))})');
+    rejectCi(identity, "if false; then " + identity + "; fi");
+    rejectCi('if(fs.statSync(file).size>65536)throw Error();', "");
+    rejectCi('if(bytes.length>65536)throw Error();', "");
+    rejectCi(evidence, evidence.replace('new TextDecoder("utf-8",{fatal:true})', 'new TextDecoder("utf-8")'));
+  });
+
+  const identityProbe = (files: Buffer[]) => {
+    const run = conversion(ci()).run!;
+    const evidence = run.split("\n").find((line) => line.startsWith("node -e ") && line.includes("Converter identity evidence: ")) || "";
+    const match = /^node -e '([^']+)' "\$conversion\/original-config\.json" "\$conversion\/converted-config\.json" "\$conversion\/original-rootfs\.json" "\$conversion\/converted-rootfs\.json"$/u.exec(evidence);
+    expect(match).not.toBeNull(); expect(files).toHaveLength(4);
+    const directory = mkdtempSync(join(tmpdir(), "reaper-gateway-image-test-")); fixtureRoots.add(directory);
+    const paths = files.map((bytes, index) => {
+      const file = join(directory, `identity-${index}.json`); writeFileSync(file, bytes); return file;
+    });
+    const result = spawnSync("node", ["-e", match![1]!, ...paths], { encoding: "utf8", timeout: 5000, maxBuffer: 8192 });
+    expect(result.error).toBeUndefined(); return result;
+  };
+
+  test("the actual identity reader compares object values independently of JSON key order", () => {
+    const result = identityProbe([
+      Buffer.from('{"Cmd":["fixture-command"],"Labels":{"alpha":"one","beta":"two"}}'),
+      Buffer.from('{"Labels":{"beta":"two","alpha":"one"},"Cmd":["fixture-command"]}'),
+      Buffer.from('{"Type":"layers","Layers":["fixture-layer"]}'),
+      Buffer.from('{"Layers":["fixture-layer"],"Type":"layers"}'),
+    ]);
+    expect(result.status).toBe(0); expect(result.stderr).toBe("");
+    expect(result.stdout).toBe('Converter identity evidence: {"configEqual":true,"rootfsEqual":true,"changedConfigFields":[]}\n');
+  });
+
+  test("unequal metadata prints only booleans and sorted field names, never values or layer identities", () => {
+    const result = identityProbe([
+      Buffer.from('{"Env":["private-original-env"],"Cmd":["private-original-command"]}'),
+      Buffer.from('{"Cmd":["private-converted-command"],"Env":["private-converted-env"]}'),
+      Buffer.from('{"Layers":["private-original-layer"]}'), Buffer.from('{"Layers":["private-converted-layer"]}'),
+    ]);
+    expect(result.status).toBe(0); expect(result.stderr).toBe("");
+    expect(result.stdout).toBe('Converter identity evidence: {"configEqual":false,"rootfsEqual":false,"changedConfigFields":["Cmd","Env"]}\n');
+    expect(result.stdout).not.toContain("private-");
+  });
+
+  test("the actual identity reader accepts the full 65536-byte JSON boundary without printing its value", () => {
+    const overhead = Buffer.byteLength(JSON.stringify({ Cmd: "" }), "utf8");
+    const boundary = Buffer.from(JSON.stringify({ Cmd: "x".repeat(65536 - overhead) }), "utf8");
+    expect(boundary.length).toBe(65536);
+    const result = identityProbe([boundary, boundary, Buffer.from("{}"), Buffer.from("{}")]);
+    expect(result.status).toBe(0); expect(result.stderr).toBe("");
+    expect(result.stdout).toBe('Converter identity evidence: {"configEqual":true,"rootfsEqual":true,"changedConfigFields":[]}\n');
+  });
+
+  test("invalid identity files emit a fixed error without JSON, UTF8 or oversized input values", () => {
+    for (const [index, bytes] of [
+      [0, Buffer.alloc(65537, 0x61)], [1, Buffer.from([0xc3, 0x28])],
+      [2, Buffer.from("{PRIVATE_FIXTURE_PARSE_DETAIL")], [3, Buffer.from("[]")],
+    ] as const) {
+      const files = [Buffer.from("{}"), Buffer.from("{}"), Buffer.from("{}"), Buffer.from("{}")];
+      files[index] = bytes;
+      const result = identityProbe(files);
+      expect(result.status).not.toBe(0); expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("IDENTITY_EVIDENCE_INVALID");
+      expect(result.stderr).not.toContain("PRIVATE_FIXTURE_PARSE_DETAIL");
+    }
+  });
+
+  test("unprintable Config field names cannot enter the public evidence line", () => {
+    const unsafe = Buffer.from(JSON.stringify({ "PRIVATE_FIXTURE\n::warning::name": "private-value" }));
+    const result = identityProbe([unsafe, Buffer.from("{}"), Buffer.from("{}"), Buffer.from("{}")]);
+    expect(result.status).not.toBe(0); expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("IDENTITY_FIELD_NAMES");
+    expect(result.stderr).not.toContain("PRIVATE_FIXTURE"); expect(result.stderr).not.toContain("private-value");
+  });
+
+  test("rejects removing or reordering the required conversion step", () => {
+    rejectCi(converterStep, "");
+    rejectCi(offlineStep + converterStep, converterStep + offlineStep);
+  });
+
+  test("rejects conditional, error-tolerant or credential-bearing conversion and CI jobs", () => {
+    rejectCi(converterHeader, converterHeader + "        if: false\n");
+    rejectCi(converterHeader, converterHeader + "        continue-on-error: true\n");
+    rejectCi(jobHeader, jobHeader + "    if: false\n");
+    rejectCi(jobHeader, jobHeader + "    continue-on-error: true\n");
+    for (const [key, value] of [
+      ["SYNTHETIC_TOKEN", "${{ secrets.SYNTHETIC_TOKEN }}"], ["DOCKER_CONFIG", "/synthetic/credentials"],
+    ]) {
+      rejectCi(converterHeader, converterHeader + `        env:\n          ${key}: ${value}\n`);
+      rejectCi(jobEnv, jobEnv + `      ${key}: ${value}\n`);
+    }
+    rejectCi(permissions, permissions + "\nenv:\n  SYNTHETIC_TOKEN: ${{ secrets.SYNTHETIC_TOKEN }}\n");
+    rejectCi(acceptanceCommand, acceptanceCommand + "\n          docker login registry.test");
+    rejectCi(permissions, permissions + "  packages: write\n");
+    rejectCi(jobHeader, jobHeader + "    permissions:\n      contents: read\n      id-token: write\n");
+  });
+
+  test("rejects alternate candidates, network or privilege expansion, writable input and broad mounts", () => {
+    for (const [from, to] of [
+      ['SKOPEO_IMAGE="$(node -p "require(\'./contracts/gateway-image-publication.v1.json\').skopeoImage")"',
+        'SKOPEO_IMAGE="registry.test/synthetic/converter:latest"'],
+      ["--network none", "--network host"], ["--pull never", "--pull always"],
+      ['--user "$(id -u):$(id -g)"', "--user 0:0"],
+      ["--read-only", "--privileged"], ["--cap-drop ALL", "--cap-add SYS_ADMIN"],
+      ["--security-opt no-new-privileges", ""],
+      ['--volume "$conversion/input:/input:ro"', '--volume "$conversion/input:/input:rw"'],
+      ['--volume "$conversion/oci:/input:ro"', '--volume "$conversion/oci:/input:rw"'],
+      ['--volume "$conversion/docker:/output"', '--volume "$RUNNER_TEMP:/output"'],
+      ['--volume "$conversion/oci:/output"', '--volume "$GITHUB_WORKSPACE:/output"'],
+      ['--volume "$conversion/tmp:/var/tmp"', '--volume "$RUNNER_TEMP:/var/tmp"'],
+    ]) rejectCi(from!, to!);
+  });
+
+  test("rejects bypassing either conversion, identity validation or the converted-image check", () => {
+    for (const fragment of [
+      versionComparison,
+      "copy --format v2s2 docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci",
+      "copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted",
+      "test \"$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)\" = \"$original_image_id\"",
+      'REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container',
+    ]) rejectCi(fragment, "true");
   });
 });

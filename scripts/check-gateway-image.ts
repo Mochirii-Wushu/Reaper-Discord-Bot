@@ -8,7 +8,8 @@ import {
   PUBLICATION_REPOSITORY,
 } from "./gateway-image-publication.js";
 
-const expectedContractSha256 = "6e74aa1181ee1d30341a5f308cba41322344efb6eb6db78c97e181b71d2f6d32";
+const expectedContractSha256 = "cefab4442a55f7dde01aa594c4ae5a74643368b257b9a13d47cca64057e7e9cf";
+const expectedConversionCiSha256 = "d1b9c16a4b82ae4fb83bd4f37399ffe5a5446618d1ce6d7db4d245ab4db827a1";
 const hash = (value: string): string =>
   createHash("sha256").update(value, "utf8").digest("hex");
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -136,8 +137,10 @@ export function validateGatewayWorkflowSet(
   contract: unknown,
 ): string[] {
   const publisher = ".github/workflows/gateway-image.yml";
+  const ci = ".github/workflows/ci.yml";
   const errors: string[] = [];
   if (!Object.hasOwn(workflows, publisher)) errors.push("The exact dormant publisher is missing.");
+  if (!Object.hasOwn(workflows, ci)) errors.push("Required offline converter CI is missing.");
   for (const [path, source] of Object.entries(workflows)) {
     if (path === publisher) {
       errors.push(...validateGatewayImageWorkflow(source, contract));
@@ -146,14 +149,19 @@ export function validateGatewayWorkflowSet(
     ) {
       errors.push("Every other workflow must remain CI-only and provider-neutral.");
     }
+    if (path === ci && (source.length > 64 * 1024 || source.includes("\uFEFF") ||
+      hash(source.replaceAll("\r\n", "\n")) !== expectedConversionCiSha256)) {
+      errors.push("The exact required CI source and offline converter gate must remain unchanged.");
+    }
   }
   return errors;
 }
 
 if (import.meta.main) {
   const root = resolve(import.meta.dir, "..");
-  const errors = validateGatewayImageWorkflow(
-    readFileSync(resolve(root, ".github/workflows/gateway-image.yml"), "utf8"),
+  const errors = validateGatewayWorkflowSet(
+    Object.fromEntries([".github/workflows/gateway-image.yml", ".github/workflows/ci.yml"].map((path) =>
+      [path, readFileSync(resolve(root, path), "utf8")])),
     JSON.parse(readFileSync(resolve(root, "contracts/gateway-image-publication.v1.json"), "utf8")),
   );
   if (errors.length) throw new Error(errors.join("\n"));
