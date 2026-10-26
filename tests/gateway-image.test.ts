@@ -660,6 +660,9 @@ describe("mandatory offline converter CI", () => {
   const jobEnv = "    env:\n      EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}\n";
   const permissions = "permissions:\n  contents: read\n";
   const acceptanceCommand = 'REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container';
+  // Observed bounded tool output; this fixture does not establish build provenance.
+  const converterVersionLine = "skopeo version 1.22.3 commit: 92397d5ba399784c6e2f9f229a4244b724743dba";
+  const versionComparison = `grep -Fx '${converterVersionLine}' "$conversion/version.txt"`;
   const rejectCi = (from: string, to: string) => {
     expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource,
       [ciPath]: originalCi }, publicationContract)).toEqual([]);
@@ -703,7 +706,7 @@ describe("mandatory offline converter CI", () => {
     expect(run.indexOf(assignment)).toBeLessThan(run.indexOf("docker pull "));
     expect(run.indexOf("docker pull ")).toBeLessThan(run.indexOf("docker run "));
     expect(run).toContain('--version | head -c257 > "$conversion/version.txt"');
-    expect(run).toContain('grep -Fx \'skopeo version 1.22.3\' "$conversion/version.txt"');
+    expect(run).toContain(versionComparison);
     expect(run).toContain("test \"$(docker image inspect --format '{{.Os}}/{{.Architecture}}' \"$SKOPEO_IMAGE\")\" = linux/amd64");
     expect(run).not.toMatch(/docker\s+login|\$\{\{\s*secrets\.|--authfile|--dest-authfile|--creds/iu);
   });
@@ -755,7 +758,7 @@ describe("mandatory offline converter CI", () => {
     const run = conversion(ci()).run!;
     const capture = 'docker run "${converter_args[@]}" "$SKOPEO_IMAGE" --version | head -c257 > "$conversion/version.txt"';
     const evidence = run.split("\n").find((line) => line.startsWith("node -e "))!;
-    const compare = 'grep -Fx \'skopeo version 1.22.3\' "$conversion/version.txt"';
+    const compare = versionComparison;
     expect(run).toContain(capture); expect(evidence).toContain('new TextDecoder("utf-8",{fatal:true})');
     expect(evidence).toContain("JSON.stringify(version)");
     expect(run.indexOf(capture)).toBeLessThan(run.indexOf(evidence));
@@ -766,6 +769,15 @@ describe("mandatory offline converter CI", () => {
     rejectCi('new TextDecoder("utf-8",{fatal:true})', 'new TextDecoder("utf-8")');
     rejectCi("JSON.stringify(version)", "version");
     rejectCi(compare, compare.replace("grep -Fx", "grep -F"));
+  });
+
+  test("rejects dropping the build suffix, changing the exact version or commit, or using a wildcard comparison", () => {
+    for (const line of [
+      "skopeo version 1.22.3",
+      converterVersionLine.replace("1.22.3", "1.22.2"),
+      converterVersionLine.replace("92397d5ba399784c6e2f9f229a4244b724743dba", "0".repeat(40)),
+    ]) rejectCi(versionComparison, `grep -Fx '${line}' "$conversion/version.txt"`);
+    rejectCi(versionComparison, 'grep -Ex \'skopeo version 1\\.22\\.3 commit: [0-9a-f]{40}\' "$conversion/version.txt"');
   });
 
   const versionProbe = (bytes: Buffer) => {
@@ -782,7 +794,7 @@ describe("mandatory offline converter CI", () => {
   };
 
   test("the actual evidence reader JSON-escapes synthetic output and accepts the complete 256-byte UTF8 boundary", () => {
-    for (const version of ["skopeo version 1.22.3\n", "界".repeat(85) + "a", "synthetic\n::warning::plain text\r\u001b[31m\t"]) {
+    for (const version of [converterVersionLine + "\n", "界".repeat(85) + "a", "synthetic\n::warning::plain text\r\u001b[31m\t"]) {
       const result = versionProbe(Buffer.from(version, "utf8"));
       expect(result.status).toBe(0); expect(result.stderr).toBe("");
       expect(result.stdout).toBe("Converter version evidence: " + JSON.stringify(version) + "\n");
@@ -838,7 +850,7 @@ describe("mandatory offline converter CI", () => {
 
   test("rejects bypassing either conversion, identity validation or the converted-image check", () => {
     for (const fragment of [
-      'grep -Fx \'skopeo version 1.22.3\' "$conversion/version.txt"',
+      versionComparison,
       "copy docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci",
       "copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted",
       "test \"$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)\" = \"$original_image_id\"",

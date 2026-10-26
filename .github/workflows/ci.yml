@@ -89,7 +89,7 @@ jobs:
           stage=version-evidence
           node -e 'const fs=require("node:fs");const file=process.argv[1];if(fs.statSync(file).size>256)throw Error("VERSION_SIZE");const bytes=fs.readFileSync(file);if(bytes.length>256)throw Error("VERSION_SIZE");const version=new TextDecoder("utf-8",{fatal:true}).decode(bytes);console.log("Converter version evidence: "+JSON.stringify(version));' "$conversion/version.txt"
           stage=version-match
-          grep -Fx 'skopeo version 1.22.3' "$conversion/version.txt"
+          grep -Fx 'skopeo version 1.22.3 commit: 92397d5ba399784c6e2f9f229a4244b724743dba' "$conversion/version.txt"
           stage=docker-to-oci
           docker run "${converter_args[@]}" --volume "$conversion/input:/input:ro" --volume "$conversion/oci:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci
           stage=oci-to-docker

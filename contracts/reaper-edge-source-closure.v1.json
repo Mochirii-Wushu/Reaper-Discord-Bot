@@ -9,7 +9,7 @@
   "framing": "rows ASCII-sorted by path; each row is status + NUL + path + NUL + mode + NUL + Git blob + NUL + lowercase SHA256(blob bytes) + LF",
   "fileCount": 156,
   "byteCount": 24158,
-  "sha256": "07160b5d3374380b0067cebe56101b5c2e36b97440061cd2ca8e4a9081e63c98",
+  "sha256": "1a11db39b5e136d1ef29f65ee521d7af89ee22f83e309e52a2bcf385c6a22c1f",
   "entries": [
     {
       "status": "A",
@@ -39,9 +39,9 @@
       "status": "M",
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "blob": "8f38154eb13991aa2b4035ebbbbdc2fb447f7af5",
-      "sha256": "a77507146fde0c00b9daceaa4c5020fcf590fd2eb8fcf10cf7f157c1714357bb",
-      "byteCount": 5277
+      "blob": "00f77c72f6d90a80f28ef8290f2ceed83234db45",
+      "sha256": "df5451ddbe4e3725d44bb07c3d0d8a3406ca2608b882db55ec94248dbc4f1a38",
+      "byteCount": 5326
     },
     {
       "status": "A",
@@ -407,8 +407,8 @@
       "status": "A",
       "path": "scripts/check-gateway-image.ts",
       "mode": "100644",
-      "blob": "4e4759708d5dcfd5c672769d6acaf3d62a365fb7",
-      "sha256": "47071b56302e172a852150e113fedaa34a29e096d3381da9b14013a40f07e763",
+      "blob": "a9b668d62a77781509d52b74056106da951fda0c",
+      "sha256": "f96ae1c37bb789b3b83f30f76c3928df657ba5ebe44ffa48ff3b620fa486a34f",
       "byteCount": 9135
     },
     {
@@ -1167,9 +1167,9 @@
       "status": "A",
       "path": "tests/gateway-image.test.ts",
       "mode": "100644",
-      "blob": "7d4c1c6f5cd6f68981f8a5b53db33106d3b1d259",
-      "sha256": "f4740d51fa87df44fdfdf82e9ba4a70bd2bb8d6ea116148afe9c7862b9640329",
-      "byteCount": 48633
+      "blob": "e10ea31e286987e61777955a11a8f2a0260c7bfa",
+      "sha256": "9e90ec888566f0e347b5f4f7493a54807eb6df111cfe586793b5ec9445e4faab",
+      "byteCount": 49325
     },
     {
       "status": "A",
