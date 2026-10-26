@@ -720,7 +720,7 @@ describe("mandatory offline converter CI", () => {
     for (const fragment of [
       '--volume "$conversion/input:/input:ro" --volume "$conversion/oci:/output"',
       '--volume "$conversion/oci:/input:ro" --volume "$conversion/docker:/output"',
-      'copy docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci',
+      'copy --format v2s2 docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci',
       'copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted',
     ]) expect(run).toContain(fragment);
     expect(run).not.toContain('--volume "$RUNNER_TEMP:/output"');
@@ -737,6 +737,21 @@ describe("mandatory offline converter CI", () => {
     const acceptance = 'REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container';
     expect(run).toContain(acceptance);
     expect(run.indexOf('docker load --input "$conversion/docker/gateway.tar"')).toBeLessThan(run.indexOf(acceptance));
+  });
+
+  test("preserves Docker metadata format without bypassing image identity, Healthcheck or runtime validation", () => {
+    const run = conversion(ci()).run!;
+    const firstCopy = "copy --format v2s2 docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci";
+    expect(run).toContain(firstCopy); expect(run.match(/copy --format v2s2/gu)).toHaveLength(1);
+    rejectCi(firstCopy, firstCopy.replace("--format v2s2 ", ""));
+    rejectCi(firstCopy, firstCopy.replace("--format v2s2", "--format oci"));
+    expect(run).toContain("stage=config-identity\ntest \"$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)\" = \"$original_image_id\"");
+    expect(run).toContain(acceptanceCommand);
+    expect(run).not.toMatch(/--(?:skip|ignore|no)-healthcheck|(?:SKIP|IGNORE|BYPASS)_[A-Z_]*HEALTH/iu);
+    const checker = readFileSync(new URL("../scripts/check-built-container.mjs", import.meta.url), "utf8");
+    expect(checker).toContain('if (JSON.stringify(config.Healthcheck?.Test) !== JSON.stringify(["CMD", "/nodejs/bin/node", "dist/healthcheck.js"]))');
+    expect(checker).toContain('errors.push("Container readiness command drifted.")');
+    expect(checker).toContain("process.exitCode = 1;");
   });
 
   test("reports failures using fixed stage labels and status without tracing commands or dumping environment", () => {
@@ -943,7 +958,7 @@ describe("mandatory offline converter CI", () => {
   test("rejects bypassing either conversion, identity validation or the converted-image check", () => {
     for (const fragment of [
       versionComparison,
-      "copy docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci",
+      "copy --format v2s2 docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci",
       "copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted",
       "test \"$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)\" = \"$original_image_id\"",
       'REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container',

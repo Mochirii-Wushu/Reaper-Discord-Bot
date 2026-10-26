@@ -9,7 +9,7 @@ import {
 } from "./gateway-image-publication.js";
 
 const expectedContractSha256 = "cefab4442a55f7dde01aa594c4ae5a74643368b257b9a13d47cca64057e7e9cf";
-const expectedConversionCiSha256 = "2a9c10e6d8633dca857a87baa360bfd08ae2b157ed7d83bb8826a879a675a067";
+const expectedConversionCiSha256 = "d1b9c16a4b82ae4fb83bd4f37399ffe5a5446618d1ce6d7db4d245ab4db827a1";
 const hash = (value: string): string =>
   createHash("sha256").update(value, "utf8").digest("hex");
 const isRecord = (value: unknown): value is Record<string, unknown> =>

@@ -94,7 +94,7 @@ jobs:
           stage=version-match
           grep -Fx 'skopeo version 1.22.3 commit: 92397d5ba399784c6e2f9f229a4244b724743dba' "$conversion/version.txt"
           stage=docker-to-oci
-          docker run "${converter_args[@]}" --volume "$conversion/input:/input:ro" --volume "$conversion/oci:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci
+          docker run "${converter_args[@]}" --volume "$conversion/input:/input:ro" --volume "$conversion/oci:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy --format v2s2 docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci
           stage=oci-to-docker
           docker run "${converter_args[@]}" --volume "$conversion/oci:/input:ro" --volume "$conversion/docker:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted
           stage=load-worker
