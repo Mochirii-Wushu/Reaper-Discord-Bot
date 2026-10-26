@@ -346,6 +346,8 @@ type Workflow = {
 };
 const publisherPath = ".github/workflows/gateway-image.yml";
 const workflowSource = readFileSync(new URL("../" + publisherPath, import.meta.url), "utf8");
+const ciPath = ".github/workflows/ci.yml";
+const ciSource = readFileSync(new URL("../" + ciPath, import.meta.url), "utf8");
 const publicationContract = JSON.parse(readFileSync(new URL("../contracts/gateway-image-publication.v1.json", import.meta.url), "utf8"));
 const workflow = (): Workflow => Bun.YAML.parse(workflowSource) as Workflow;
 const action = (job: WorkflowJob, name: string): WorkflowStep => {
@@ -616,22 +618,167 @@ describe("exact dormant image workflow", () => {
 
 describe("publication-only workflow-set exception", () => {
   const ordinaryCi = "name: synthetic\non: push\npermissions: {contents: read}\njobs: {check: {runs-on: ubuntu-24.04, steps: [{run: bun run check}]}}\n";
-  test("accepts the exact dormant publisher with ordinary credential-free CI", () => {
-    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource, ".github/workflows/ci.yml": ordinaryCi }, publicationContract)).toEqual([]);
+  test("accepts only the actual canonical CI plus the dormant publisher, with optional ordinary CI elsewhere", () => {
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource, [ciPath]: ciSource }, publicationContract)).toEqual([]);
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource, [ciPath]: ciSource,
+      ".github/workflows/other.yml": ordinaryCi }, publicationContract)).toEqual([]);
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource,
+      [ciPath]: ciSource.replaceAll("\r\n", "\n").replaceAll("\n", "\r\n") }, publicationContract)).toEqual([]);
   });
 
   test("rejects missing, renamed, copied and additional privileged workflows", () => {
     const mutants: Record<string, string>[] = [
-      {}, { ".github/workflows/renamed.yml": workflowSource },
-      { [publisherPath]: workflowSource, ".github/workflows/copied.yml": workflowSource },
+      {}, { [ciPath]: ciSource }, { [publisherPath]: workflowSource },
+      { [ciPath]: ciSource, ".github/workflows/renamed.yml": workflowSource },
+      { [publisherPath]: workflowSource, ".github/workflows/renamed-ci.yml": ciSource },
+      { [publisherPath]: workflowSource, [ciPath]: ordinaryCi },
+      { [publisherPath]: workflowSource, [ciPath]: ciSource, ".github/workflows/copied.yml": workflowSource },
       ...["docker push registry.test/synthetic/reaper", "supabase functions deploy", "supabase db push", "vercel deploy", "echo ghcr.io"]
-        .map((run) => ({ [publisherPath]: workflowSource, ".github/workflows/other.yml": ordinaryCi + "# " + run })),
+        .map((run) => ({ [publisherPath]: workflowSource, [ciPath]: ciSource,
+          ".github/workflows/other.yml": ordinaryCi + "# " + run })),
     ];
     for (const workflows of mutants) expect(validateGatewayWorkflowSet(workflows, publicationContract).length).toBeGreaterThan(0);
   });
 
   test("a privileged workflow at the canonical name still requires exact source and contract", () => {
-    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource + "\n# unreviewed" }, publicationContract).length).toBeGreaterThan(0);
-    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource }, { ...publicationContract, publicationAuthorized: true }).length).toBeGreaterThan(0);
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource + "\n# unreviewed", [ciPath]: ciSource }, publicationContract).length).toBeGreaterThan(0);
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource, [ciPath]: ciSource },
+      { ...publicationContract, publicationAuthorized: true }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("mandatory offline converter CI", () => {
+  const ci = (): Workflow => Bun.YAML.parse(ciSource) as Workflow;
+  const conversion = (candidate: Workflow): WorkflowStep => command(candidate.jobs.validate, "converter_args=(");
+  const originalCi = ciSource.replaceAll("\r\n", "\n");
+  const converterHeader = "      - name: Verify pinned converter without publishing\n        shell: bash\n";
+  const converterStep = originalCi.slice(originalCi.indexOf(converterHeader));
+  const offlineStep = "      - name: Verify OCI worker without provider access\n        env:\n" +
+    "          REAPER_CONTAINER_IMAGE: mochirii-reaper-gateway:ci\n        run: bun run check:container\n";
+  const jobHeader = "  validate:\n    runs-on: ubuntu-24.04\n";
+  const jobEnv = "    env:\n      EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}\n";
+  const permissions = "permissions:\n  contents: read\n";
+  const acceptanceCommand = 'REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container';
+  const rejectCi = (from: string, to: string) => {
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource,
+      [ciPath]: originalCi }, publicationContract)).toEqual([]);
+    const offset = originalCi.indexOf(from);
+    expect(from.length).toBeGreaterThan(0);
+    expect(offset).toBeGreaterThanOrEqual(0);
+    expect(originalCi.indexOf(from, offset + from.length)).toBe(-1);
+    const candidate = originalCi.replace(from, to);
+    expect(candidate).not.toBe(originalCi);
+    expect(candidate).toBe(originalCi.slice(0, offset) + to + originalCi.slice(offset + from.length));
+    expect(validateGatewayWorkflowSet({ [publisherPath]: workflowSource,
+      [ciPath]: candidate }, publicationContract)).toContain(
+      "The exact required CI source and offline converter gate must remain unchanged.",
+    );
+  };
+
+  test("requires the converter gate immediately after the original offline container verification", () => {
+    const candidate = ci();
+    const steps = candidate.jobs.validate.steps;
+    const step = conversion(candidate);
+    const previous = steps[steps.indexOf(step) - 1];
+    expect(step.name).toBe("Verify pinned converter without publishing");
+    expect(step.shell).toBe("bash");
+    expect(Object.keys(step).sort()).toEqual(["name", "run", "shell"]);
+    expect(previous).toEqual({ name: "Verify OCI worker without provider access",
+      env: { REAPER_CONTAINER_IMAGE: "mochirii-reaper-gateway:ci" }, run: "bun run check:container" });
+    expect(candidate.permissions).toEqual({ contents: "read" });
+    expect(candidate.jobs.validate.permissions).toBeUndefined();
+    expect(Object.keys(candidate.jobs.validate.env as object)).toEqual(["EXPECTED_SHA"]);
+    expect(step.env).toBeUndefined();
+  });
+
+  test("derives the exact candidate from the publication contract and pulls publicly before offline execution", () => {
+    const run = conversion(ci()).run!;
+    const assignment = 'SKOPEO_IMAGE="$(node -p "require(\'./contracts/gateway-image-publication.v1.json\').skopeoImage")"';
+    expect(run).toContain("set -Eeuo pipefail");
+    expect(run).toContain(assignment);
+    expect(run).not.toContain(publicationContract.skopeoImage);
+    expect(workflow().env.SKOPEO_IMAGE).toBe(publicationContract.skopeoImage);
+    expect(run).toContain('docker pull --platform linux/amd64 "$SKOPEO_IMAGE"');
+    expect(run.indexOf(assignment)).toBeLessThan(run.indexOf("docker pull "));
+    expect(run.indexOf("docker pull ")).toBeLessThan(run.indexOf("docker run "));
+    expect(run).toContain("--version | grep -Fx 'skopeo version 1.22.3'");
+    expect(run).toContain("test \"$(docker image inspect --format '{{.Os}}/{{.Architecture}}' \"$SKOPEO_IMAGE\")\" = linux/amd64");
+    expect(run).not.toMatch(/docker\s+login|\$\{\{\s*secrets\.|--authfile|--dest-authfile|--creds/iu);
+  });
+
+  test("uses hardened non-root offline runs with read-only input and isolated writable conversion directories", () => {
+    const run = conversion(ci()).run!;
+    expect(run).toContain('conversion="$(mktemp -d "$RUNNER_TEMP/reaper-converter.XXXXXXXX")"');
+    expect(run).toContain('mkdir "$conversion/input" "$conversion/oci" "$conversion/docker" "$conversion/tmp"');
+    expect(run).toContain('converter_args=(--rm --pull never --user "$(id -u):$(id -g)" --network none --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$conversion/tmp:/var/tmp")');
+    expect(run.match(/docker run "\$\{converter_args\[@\]\}"/gu)).toHaveLength(3);
+    for (const fragment of [
+      '--volume "$conversion/input:/input:ro" --volume "$conversion/oci:/output"',
+      '--volume "$conversion/oci:/input:ro" --volume "$conversion/docker:/output"',
+      'copy docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci',
+      'copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted',
+    ]) expect(run).toContain(fragment);
+    expect(run).not.toContain('--volume "$RUNNER_TEMP:/output"');
+    expect(run).not.toContain('--volume "$GITHUB_WORKSPACE:/output"');
+    expect(run).not.toContain("--privileged");
+  });
+
+  test("checks the converted image's identity and platform before its unchanged offline acceptance check", () => {
+    const run = conversion(ci()).run!;
+    expect(run).toContain('docker save --output "$conversion/input/gateway.tar" mochirii-reaper-gateway:ci');
+    expect(run).toContain('docker load --input "$conversion/docker/gateway.tar"');
+    expect(run).toContain("test \"$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)\" = \"$original_image_id\"");
+    expect(run).toContain("test \"$(docker image inspect --format '{{.Os}}/{{.Architecture}}' mochirii-reaper-gateway:converted)\" = linux/amd64");
+    const acceptance = 'REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container';
+    expect(run).toContain(acceptance);
+    expect(run.indexOf('docker load --input "$conversion/docker/gateway.tar"')).toBeLessThan(run.indexOf(acceptance));
+  });
+
+  test("rejects removing or reordering the required conversion step", () => {
+    rejectCi(converterStep, "");
+    rejectCi(offlineStep + converterStep, converterStep + offlineStep);
+  });
+
+  test("rejects conditional, error-tolerant or credential-bearing conversion and CI jobs", () => {
+    rejectCi(converterHeader, converterHeader + "        if: false\n");
+    rejectCi(converterHeader, converterHeader + "        continue-on-error: true\n");
+    rejectCi(jobHeader, jobHeader + "    if: false\n");
+    rejectCi(jobHeader, jobHeader + "    continue-on-error: true\n");
+    for (const [key, value] of [
+      ["SYNTHETIC_TOKEN", "${{ secrets.SYNTHETIC_TOKEN }}"], ["DOCKER_CONFIG", "/synthetic/credentials"],
+    ]) {
+      rejectCi(converterHeader, converterHeader + `        env:\n          ${key}: ${value}\n`);
+      rejectCi(jobEnv, jobEnv + `      ${key}: ${value}\n`);
+    }
+    rejectCi(permissions, permissions + "\nenv:\n  SYNTHETIC_TOKEN: ${{ secrets.SYNTHETIC_TOKEN }}\n");
+    rejectCi(acceptanceCommand, acceptanceCommand + "\n          docker login registry.test");
+    rejectCi(permissions, permissions + "  packages: write\n");
+    rejectCi(jobHeader, jobHeader + "    permissions:\n      contents: read\n      id-token: write\n");
+  });
+
+  test("rejects alternate candidates, network or privilege expansion, writable input and broad mounts", () => {
+    for (const [from, to] of [
+      ['SKOPEO_IMAGE="$(node -p "require(\'./contracts/gateway-image-publication.v1.json\').skopeoImage")"',
+        'SKOPEO_IMAGE="registry.test/synthetic/converter:latest"'],
+      ["--network none", "--network host"], ["--pull never", "--pull always"],
+      ['--user "$(id -u):$(id -g)"', "--user 0:0"],
+      ["--read-only", "--privileged"], ["--cap-drop ALL", "--cap-add SYS_ADMIN"],
+      ["--security-opt no-new-privileges", ""],
+      ['--volume "$conversion/input:/input:ro"', '--volume "$conversion/input:/input:rw"'],
+      ['--volume "$conversion/oci:/input:ro"', '--volume "$conversion/oci:/input:rw"'],
+      ['--volume "$conversion/docker:/output"', '--volume "$RUNNER_TEMP:/output"'],
+      ['--volume "$conversion/oci:/output"', '--volume "$GITHUB_WORKSPACE:/output"'],
+      ['--volume "$conversion/tmp:/var/tmp"', '--volume "$RUNNER_TEMP:/var/tmp"'],
+    ]) rejectCi(from!, to!);
+  });
+
+  test("rejects bypassing either conversion, identity validation or the converted-image check", () => {
+    for (const fragment of [
+      "--version | grep -Fx 'skopeo version 1.22.3'",
+      "copy docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci",
+      "copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted",
+      "test \"$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)\" = \"$original_image_id\"",
+      'REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container',
+    ]) rejectCi(fragment, "true");
   });
 });

@@ -117,6 +117,21 @@ workflow's capabilities are not a record of live publication. Preserve actual
 historical runs and receipts separately; a successful source-CI image build is
 not a published, accepted release or permission for another manual run.
 
+The converter is pinned to an upstream retained version tag and exact digest.
+Its public manifest matched the recorded index and Linux/amd64 child during
+the 26 October 2026 source review. Immutable tags favor fixed bytes over daily
+security updates; metadata alone proves neither binary version, provenance nor
+security. Recheck availability and available security evidence before a release.
+Required Linux CI checks the converter's actual version and architecture, then
+performs an offline Docker/OCI/Docker archive round trip as the nonroot runner
+with isolated mounts and no credentials. The converted worker must retain its
+original image configuration ID and pass the existing offline runtime checks.
+The exact CI source is bound by the publication checker, including its original
+permissions, source checks and mandatory baseline. Local source tests do not
+establish that this Linux check ran. This preflight does not prove preservation
+of the publisher's complete attested OCI index; the unchanged promotion and
+registry attestation checks below remain required.
+
 Before dispatch, approve the exact source commit/tree and the narrow short-lived
 `GITHUB_TOKEN` packages/attestations/OIDC publication exception. It authorizes
 only image, signature, SBOM, and provenance publication, with no GitHub content

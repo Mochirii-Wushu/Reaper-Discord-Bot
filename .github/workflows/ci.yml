@@ -66,3 +66,22 @@ jobs:
         env:
           REAPER_CONTAINER_IMAGE: mochirii-reaper-gateway:ci
         run: bun run check:container
+      - name: Verify pinned converter without publishing
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          SKOPEO_IMAGE="$(node -p "require('./contracts/gateway-image-publication.v1.json').skopeoImage")"
+          docker pull --platform linux/amd64 "$SKOPEO_IMAGE"
+          test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$SKOPEO_IMAGE")" = linux/amd64
+          conversion="$(mktemp -d "$RUNNER_TEMP/reaper-converter.XXXXXXXX")"
+          mkdir "$conversion/input" "$conversion/oci" "$conversion/docker" "$conversion/tmp"
+          original_image_id="$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:ci)"
+          docker save --output "$conversion/input/gateway.tar" mochirii-reaper-gateway:ci
+          converter_args=(--rm --pull never --user "$(id -u):$(id -g)" --network none --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$conversion/tmp:/var/tmp")
+          docker run "${converter_args[@]}" "$SKOPEO_IMAGE" --version | grep -Fx 'skopeo version 1.22.3'
+          docker run "${converter_args[@]}" --volume "$conversion/input:/input:ro" --volume "$conversion/oci:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy docker-archive:/input/gateway.tar oci-archive:/output/gateway.oci.tar:ci
+          docker run "${converter_args[@]}" --volume "$conversion/oci:/input:ro" --volume "$conversion/docker:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted
+          docker load --input "$conversion/docker/gateway.tar"
+          test "$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)" = "$original_image_id"
+          test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' mochirii-reaper-gateway:converted)" = linux/amd64
+          REAPER_CONTAINER_IMAGE=mochirii-reaper-gateway:converted REAPER_EXPECTED_REVISION="$EXPECTED_SHA" bun run check:container
