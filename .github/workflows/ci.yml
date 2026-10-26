@@ -81,6 +81,9 @@ jobs:
           conversion="$(mktemp -d "$RUNNER_TEMP/reaper-converter.XXXXXXXX")"
           mkdir "$conversion/input" "$conversion/oci" "$conversion/docker" "$conversion/tmp"
           original_image_id="$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:ci)"
+          stage=original-identity
+          docker image inspect --format '{{json .Config}}' mochirii-reaper-gateway:ci | head -c65537 > "$conversion/original-config.json"
+          docker image inspect --format '{{json .RootFS}}' mochirii-reaper-gateway:ci | head -c65537 > "$conversion/original-rootfs.json"
           stage=save-worker
           docker save --output "$conversion/input/gateway.tar" mochirii-reaper-gateway:ci
           converter_args=(--rm --pull never --user "$(id -u):$(id -g)" --network none --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$conversion/tmp:/var/tmp")
@@ -96,6 +99,10 @@ jobs:
           docker run "${converter_args[@]}" --volume "$conversion/oci:/input:ro" --volume "$conversion/docker:/output" "$SKOPEO_IMAGE" --override-os linux --override-arch amd64 copy oci-archive:/input/gateway.oci.tar docker-archive:/output/gateway.tar:mochirii-reaper-gateway:converted
           stage=load-worker
           docker load --input "$conversion/docker/gateway.tar"
+          stage=identity-evidence
+          docker image inspect --format '{{json .Config}}' mochirii-reaper-gateway:converted | head -c65537 > "$conversion/converted-config.json"
+          docker image inspect --format '{{json .RootFS}}' mochirii-reaper-gateway:converted | head -c65537 > "$conversion/converted-rootfs.json"
+          node -e 'const fs=require("node:fs");const {isDeepStrictEqual:equal}=require("node:util");const read=file=>{try{if(fs.statSync(file).size>65536)throw Error();const bytes=fs.readFileSync(file);if(bytes.length>65536)throw Error();const value=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));if(!value||typeof value!=="object"||Array.isArray(value))throw Error();return value;}catch{throw Error("IDENTITY_EVIDENCE_INVALID");}};const [a,b,c,d]=process.argv.slice(1).map(read);const fields=[...new Set([...Object.keys(a),...Object.keys(b)])].sort();if(fields.length>128||fields.some(k=>!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(k)))throw Error("IDENTITY_FIELD_NAMES");console.log("Converter identity evidence: "+JSON.stringify({configEqual:equal(a,b),rootfsEqual:equal(c,d),changedConfigFields:fields.filter(k=>!equal(a[k],b[k]))}));' "$conversion/original-config.json" "$conversion/converted-config.json" "$conversion/original-rootfs.json" "$conversion/converted-rootfs.json"
           stage=config-identity
           test "$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)" = "$original_image_id"
           stage=worker-platform

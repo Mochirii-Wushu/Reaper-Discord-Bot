@@ -744,9 +744,9 @@ describe("mandatory offline converter CI", () => {
     const trap = 'trap \'status=$?; printf "Converter preflight failed: phase=%s status=%s\\n" "$stage" "$status" >&2; exit "$status"\' ERR';
     expect(run.split("\n").filter((line) => line.startsWith("trap "))).toEqual([trap]);
     expect([...run.matchAll(/^stage=([a-z-]+)$/gmu)].map((match) => match[1])).toEqual([
-      "contract", "pull", "converter-platform", "scratch", "save-worker", "version-command",
+      "contract", "pull", "converter-platform", "scratch", "original-identity", "save-worker", "version-command",
       "version-evidence", "version-match", "docker-to-oci", "oci-to-docker", "load-worker",
-      "config-identity", "worker-platform", "offline-runtime",
+      "identity-evidence", "config-identity", "worker-platform", "offline-runtime",
     ]);
     expect(run).not.toMatch(/set[\t ]+-[a-zA-Z]*x|xtrace|printenv|declare[\t ]+-p|typeset[\t ]+-p|(?:^|\n)env[\t ]*(?:\n|$)|BASH_COMMAND/u);
     rejectCi(trap, trap.replace('"$stage" "$status"', '"$BASH_COMMAND" "$status"'));
@@ -766,7 +766,7 @@ describe("mandatory offline converter CI", () => {
     rejectCi("head -c257", "cat");
     rejectCi('if(fs.statSync(file).size>256)throw Error("VERSION_SIZE");', "");
     rejectCi('if(bytes.length>256)throw Error("VERSION_SIZE");', "");
-    rejectCi('new TextDecoder("utf-8",{fatal:true})', 'new TextDecoder("utf-8")');
+    rejectCi(evidence, evidence.replace('new TextDecoder("utf-8",{fatal:true})', 'new TextDecoder("utf-8")'));
     rejectCi("JSON.stringify(version)", "version");
     rejectCi(compare, compare.replace("grep -Fx", "grep -F"));
   });
@@ -808,6 +808,98 @@ describe("mandatory offline converter CI", () => {
       const result = versionProbe(bytes);
       expect(result.status).not.toBe(0); expect(result.stdout).toBe("");
     }
+  });
+
+  test("captures bounded identity evidence without making the existing image-ID equality conditional", () => {
+    const run = conversion(ci()).run!;
+    const evidence = run.split("\n").find((line) => line.startsWith("node -e ") && line.includes("Converter identity evidence: "))!;
+    for (const [tag, field, filename] of [
+      ["ci", "Config", "original-config.json"], ["ci", "RootFS", "original-rootfs.json"],
+      ["converted", "Config", "converted-config.json"], ["converted", "RootFS", "converted-rootfs.json"],
+    ]) {
+      const capture = `docker image inspect --format '{{json .${field}}}' mochirii-reaper-gateway:${tag} | head -c65537 > "$conversion/${filename}"`;
+      expect(run).toContain(capture);
+      expect(run.indexOf(capture)).toBeLessThan(run.indexOf(evidence));
+      rejectCi(capture, capture.replace("head -c65537", "cat"));
+    }
+    expect(run.indexOf('"$conversion/original-rootfs.json"')).toBeLessThan(run.indexOf("stage=save-worker"));
+    expect(run.indexOf("stage=load-worker")).toBeLessThan(run.indexOf('"$conversion/converted-config.json"'));
+    const identity = "test \"$(docker image inspect --format '{{.Id}}' mochirii-reaper-gateway:converted)\" = \"$original_image_id\"";
+    expect(run.split("\n").filter((line) => line.includes("inspect --format '{{.Id}}' mochirii-reaper-gateway:converted"))).toEqual([identity]);
+    expect(run).toContain("stage=config-identity\n" + identity);
+    expect(run.indexOf(evidence)).toBeLessThan(run.indexOf(identity));
+    expect(evidence).toContain('isDeepStrictEqual:equal');
+    expect(evidence).toContain('JSON.stringify({configEqual:equal(a,b),rootfsEqual:equal(c,d),changedConfigFields:fields.filter(k=>!equal(a[k],b[k]))})');
+    rejectCi(identity, "if false; then " + identity + "; fi");
+    rejectCi('if(fs.statSync(file).size>65536)throw Error();', "");
+    rejectCi('if(bytes.length>65536)throw Error();', "");
+    rejectCi(evidence, evidence.replace('new TextDecoder("utf-8",{fatal:true})', 'new TextDecoder("utf-8")'));
+  });
+
+  const identityProbe = (files: Buffer[]) => {
+    const run = conversion(ci()).run!;
+    const evidence = run.split("\n").find((line) => line.startsWith("node -e ") && line.includes("Converter identity evidence: ")) || "";
+    const match = /^node -e '([^']+)' "\$conversion\/original-config\.json" "\$conversion\/converted-config\.json" "\$conversion\/original-rootfs\.json" "\$conversion\/converted-rootfs\.json"$/u.exec(evidence);
+    expect(match).not.toBeNull(); expect(files).toHaveLength(4);
+    const directory = mkdtempSync(join(tmpdir(), "reaper-gateway-image-test-")); fixtureRoots.add(directory);
+    const paths = files.map((bytes, index) => {
+      const file = join(directory, `identity-${index}.json`); writeFileSync(file, bytes); return file;
+    });
+    const result = spawnSync("node", ["-e", match![1]!, ...paths], { encoding: "utf8", timeout: 5000, maxBuffer: 8192 });
+    expect(result.error).toBeUndefined(); return result;
+  };
+
+  test("the actual identity reader compares object values independently of JSON key order", () => {
+    const result = identityProbe([
+      Buffer.from('{"Cmd":["fixture-command"],"Labels":{"alpha":"one","beta":"two"}}'),
+      Buffer.from('{"Labels":{"beta":"two","alpha":"one"},"Cmd":["fixture-command"]}'),
+      Buffer.from('{"Type":"layers","Layers":["fixture-layer"]}'),
+      Buffer.from('{"Layers":["fixture-layer"],"Type":"layers"}'),
+    ]);
+    expect(result.status).toBe(0); expect(result.stderr).toBe("");
+    expect(result.stdout).toBe('Converter identity evidence: {"configEqual":true,"rootfsEqual":true,"changedConfigFields":[]}\n');
+  });
+
+  test("unequal metadata prints only booleans and sorted field names, never values or layer identities", () => {
+    const result = identityProbe([
+      Buffer.from('{"Env":["private-original-env"],"Cmd":["private-original-command"]}'),
+      Buffer.from('{"Cmd":["private-converted-command"],"Env":["private-converted-env"]}'),
+      Buffer.from('{"Layers":["private-original-layer"]}'), Buffer.from('{"Layers":["private-converted-layer"]}'),
+    ]);
+    expect(result.status).toBe(0); expect(result.stderr).toBe("");
+    expect(result.stdout).toBe('Converter identity evidence: {"configEqual":false,"rootfsEqual":false,"changedConfigFields":["Cmd","Env"]}\n');
+    expect(result.stdout).not.toContain("private-");
+  });
+
+  test("the actual identity reader accepts the full 65536-byte JSON boundary without printing its value", () => {
+    const overhead = Buffer.byteLength(JSON.stringify({ Cmd: "" }), "utf8");
+    const boundary = Buffer.from(JSON.stringify({ Cmd: "x".repeat(65536 - overhead) }), "utf8");
+    expect(boundary.length).toBe(65536);
+    const result = identityProbe([boundary, boundary, Buffer.from("{}"), Buffer.from("{}")]);
+    expect(result.status).toBe(0); expect(result.stderr).toBe("");
+    expect(result.stdout).toBe('Converter identity evidence: {"configEqual":true,"rootfsEqual":true,"changedConfigFields":[]}\n');
+  });
+
+  test("invalid identity files emit a fixed error without JSON, UTF8 or oversized input values", () => {
+    for (const [index, bytes] of [
+      [0, Buffer.alloc(65537, 0x61)], [1, Buffer.from([0xc3, 0x28])],
+      [2, Buffer.from("{PRIVATE_FIXTURE_PARSE_DETAIL")], [3, Buffer.from("[]")],
+    ] as const) {
+      const files = [Buffer.from("{}"), Buffer.from("{}"), Buffer.from("{}"), Buffer.from("{}")];
+      files[index] = bytes;
+      const result = identityProbe(files);
+      expect(result.status).not.toBe(0); expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("IDENTITY_EVIDENCE_INVALID");
+      expect(result.stderr).not.toContain("PRIVATE_FIXTURE_PARSE_DETAIL");
+    }
+  });
+
+  test("unprintable Config field names cannot enter the public evidence line", () => {
+    const unsafe = Buffer.from(JSON.stringify({ "PRIVATE_FIXTURE\n::warning::name": "private-value" }));
+    const result = identityProbe([unsafe, Buffer.from("{}"), Buffer.from("{}"), Buffer.from("{}")]);
+    expect(result.status).not.toBe(0); expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("IDENTITY_FIELD_NAMES");
+    expect(result.stderr).not.toContain("PRIVATE_FIXTURE"); expect(result.stderr).not.toContain("private-value");
   });
 
   test("rejects removing or reordering the required conversion step", () => {
