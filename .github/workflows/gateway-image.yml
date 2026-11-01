@@ -51,7 +51,7 @@ jobs:
           ref: ${{ env.EXPECTED_SHA }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22.23.4"
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -201,7 +201,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/skopeo-tmp"
           docker run --rm --user "$(id -u):$(id -g)" --network none --read-only --cap-drop ALL --security-opt no-new-privileges --volume "$RUNNER_TEMP/skopeo-tmp:/var/tmp" --volume "$BUNDLE:/bundle:ro" "$SKOPEO_IMAGE" inspect --raw oci-archive:/bundle/gateway.oci.tar > "$RUNNER_TEMP/actual-manifest.json"
           cmp "$BUNDLE/manifest.json" "$RUNNER_TEMP/actual-manifest.json"
-      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: xartaiusx
